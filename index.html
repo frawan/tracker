@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ibadah & Namaz Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+</head>
+<body class="bg-gray-100 font-sans text-gray-800">
+
+    <div class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-emerald-700">Ibadah Tracking Dashboard</h1>
+            <p class="text-gray-600">Track your daily prayers (Alone/Jama'at), Nafal, Quran recitation, and analyze monthly progress.</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            
+            <div class="lg:col-span-2 space-y-6">
+                <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-emerald-600">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                        <span>Daily Entry</span>
+                        <div class="flex items-center space-x-2 bg-gray-50 p-1 border rounded-lg shadow-sm">
+                            <button id="prev-date-btn" class="px-3 py-1 bg-white hover:bg-gray-100 border rounded text-emerald-700 font-extrabold transition cursor-pointer">&lt;</button>
+                            <input type="date" id="tracker-date" class="border rounded p-1 text-sm bg-white font-medium focus:outline-emerald-600">
+                            <button id="next-date-btn" class="px-3 py-1 bg-white hover:bg-gray-100 border rounded text-emerald-700 font-extrabold transition cursor-pointer">&gt;</button>
+                        </div>
+                    </h2>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+                        <div class="p-3 bg-emerald-50 rounded-lg text-center flex flex-col justify-center">
+                            <span class="block text-xs uppercase text-emerald-800 font-bold tracking-wider">Prayers Count</span>
+                            <span id="daily-count" class="text-2xl font-extrabold text-emerald-700">0 / 5</span>
+                        </div>
+                        <div class="sm:col-span-3 grid grid-cols-3 gap-2 bg-gray-50 border border-gray-100 p-2 rounded-lg">
+                            <button onclick="batchLogPrayers('Y')" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded shadow transition flex flex-col items-center justify-center cursor-pointer">
+                                <span>🕌 All Masjid</span>
+                                <span class="text-[10px] font-normal opacity-90">(Jama'at - Y)</span>
+                            </button>
+                            <button onclick="batchLogPrayers('y')" class="px-2 py-1 bg-sky-500 hover:bg-sky-600 text-white font-semibold text-xs rounded shadow transition flex flex-col items-center justify-center cursor-pointer">
+                                <span>🏠 All Alone</span>
+                                <span class="text-[10px] font-normal opacity-90">(Alone - y)</span>
+                            </button>
+                            <button onclick="batchLogPrayers('')" class="px-2 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold text-xs rounded transition flex flex-col items-center justify-center cursor-pointer">
+                                <span>🔄 Reset Day</span>
+                                <span class="text-[10px] font-normal opacity-70">(Clear All)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mb-4 p-3 bg-gray-50 rounded-lg text-xs text-gray-500 flex justify-around border">
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 bg-white border rounded inline-block"></span> Click 1: Unprayed</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 bg-sky-400 rounded inline-block"></span> Click 2: Alone (y)</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 bg-emerald-500 rounded inline-block"></span> Click 3: Jama'at (Y)</span>
+                    </div>
+
+                    <h3 class="font-medium text-sm text-gray-500 uppercase tracking-wider mb-2">Obligatory Namaz</h3>
+                    <div class="grid grid-cols-5 gap-2 text-center mb-6">
+                        <button id="btn-fajr" onclick="cyclePrayerState('fajr')" class="border rounded-lg p-3 cursor-pointer bg-white transition flex flex-col items-center justify-between min-h-20 focus:outline-none">
+                            <span class="text-sm font-bold mb-1">فجر</span>
+                            <span id="status-fajr" class="text-xs font-mono px-2 py-0.5 rounded bg-gray-100 text-gray-400">-</span>
+                        </button>
+                        <button id="btn-dhuhr" onclick="cyclePrayerState('dhuhr')" class="border rounded-lg p-3 cursor-pointer bg-white transition flex flex-col items-center justify-between min-h-20 focus:outline-none">
+                            <span class="text-sm font-bold mb-1">ظهر</span>
+                            <span id="status-dhuhr" class="text-xs font-mono px-2 py-0.5 rounded bg-gray-100 text-gray-400">-</span>
+                        </button>
+                        <button id="btn-asr" onclick="cyclePrayerState('asr')" class="border rounded-lg p-3 cursor-pointer bg-white transition flex flex-col items-center justify-between min-h-20 focus:outline-none">
+                            <span class="text-sm font-bold mb-1">عصر</span>
+                            <span id="status-asr" class="text-xs font-mono px-2 py-0.5 rounded bg-gray-100 text-gray-400">-</span>
+                        </button>
+                        <button id="btn-maghrib" onclick="cyclePrayerState('maghrib')" class="border rounded-lg p-3 cursor-pointer bg-white transition flex flex-col items-center justify-between min-h-20 focus:outline-none">
+                            <span class="text-sm font-bold mb-1">مغرب</span>
+                            <span id="status-maghrib" class="text-xs font-mono px-2 py-0.5 rounded bg-gray-100 text-gray-400">-</span>
+                        </button>
+                        <button id="btn-isha" onclick="cyclePrayerState('isha')" class="border rounded-lg p-3 cursor-pointer bg-white transition flex flex-col items-center justify-between min-h-20 focus:outline-none">
+                            <span class="text-sm font-bold mb-1">عشاء</span>
+                            <span id="status-isha" class="text-xs font-mono px-2 py-0.5 rounded bg-gray-100 text-gray-400">-</span>
+                        </button>
+                    </div>
+
+                    <h3 class="font-medium text-sm text-gray-500 uppercase tracking-wider mb-2">Additional Ibadah</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <label class="flex items-center justify-between border rounded-lg p-4 cursor-pointer hover:bg-gray-50 bg-white transition">
+                            <span class="text-md font-bold text-gray-700">نفل (Nafal)</span>
+                            <input type="checkbox" id="nafal" class="w-6 h-6 accent-emerald-600">
+                        </label>
+                        <label class="flex items-center justify-between border rounded-lg p-4 cursor-pointer hover:bg-gray-50 bg-white transition">
+                            <span class="text-md font-bold text-gray-700">قرآن (Quran)</span>
+                            <input type="checkbox" id="quran" class="w-6 h-6 accent-emerald-600">
+                        </label>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-md border border-amber-100 space-y-4">
+                    <h3 class="text-lg font-semibold text-amber-800">Workspace Management & Sharing</h3>
+                    <p class="text-xs text-amber-700">Clicking reset will delete local data histories and dynamically restructure your timeline metrics to start fresh from your absolute current month and year.</p>
+                    <button onclick="resetTimelineToCurrentMonth()" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs rounded-lg shadow transition cursor-pointer">
+                        🔄 Wipe Data & Reset Timeline to Current Month
+                    </button>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-md space-y-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Data Backup Management</h3>
+                    <div class="flex flex-col sm:flex-row gap-4 items-center">
+                        <button onclick="exportDataBackup()" class="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm rounded-lg shadow transition cursor-pointer">
+                            📥 Download Backup File
+                        </button>
+                        <label class="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm rounded-lg shadow transition text-center cursor-pointer">
+                            📤 Restore from Backup File
+                            <input type="file" id="import-file-input" onchange="importDataBackup(event)" class="hidden" accept=".json">
+                        </label>
+                    </div>
+                </div>
+
+                <details class="bg-white rounded-xl shadow-md group border border-gray-100 block transition-all duration-200" open>
+                    <summary class="flex justify-between items-center p-6 cursor-pointer select-none list-none font-semibold text-xl text-gray-700 focus:outline-none">
+                        <span>Update Previous Months Data</span>
+                        <span class="text-emerald-600 transition-transform duration-300 group-open:rotate-180 text-sm">▼</span>
+                    </summary>
+                    <div class="px-6 pb-6 border-t border-gray-50 pt-4">
+                        <p class="text-sm text-gray-500 mb-4">Input percentages directly from your previous source to update the graph comparisons.</p>
+                        <div class="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                            <div id="manual-months-container" class="contents"></div>
+                        </div>
+                    </div>
+                </details>
+            </div>
+
+            <div class="space-y-6">
+                <div class="bg-white p-6 rounded-xl shadow-md flex flex-col justify-between">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-700">Monthly Performance</h2>
+                    <div class="relative w-full h-64">
+                        <canvas id="monthlyChart"></canvas>
+                    </div>
+                </div>
+
+                <details class="bg-white rounded-xl shadow-md group border border-gray-100 block transition-all duration-200" open>
+                    <summary class="flex justify-between items-center p-6 cursor-pointer select-none list-none font-semibold text-xl text-gray-700 focus:outline-none">
+                        <span>Overview Table</span>
+                        <span class="text-emerald-600 transition-transform duration-300 group-open:rotate-180 text-sm">▼</span>
+                    </summary>
+                    <div class="px-6 pb-6 border-t border-gray-50 pt-4">
+                        <div class="border rounded-lg overflow-hidden">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-gray-50 text-xs font-semibold text-gray-500 uppercase border-b">
+                                        <th class="p-3">Month</th>
+                                        <th class="p-3 text-center">Trend</th>
+                                        <th class="p-3 text-right">Achieved %</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="summary-table-body" class="divide-y text-sm">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </details>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const standardCalendarMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const monthMap = { 0: "Jan", 1: "Feb", 2: "Mar", 3: "Apr", 4: "May", 5: "Jun", 6: "Jul", 7: "Aug", 8: "Sep", 9: "Oct", 10: "Nov", 11: "Dec" };
+        const prayersList = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+
+        let monthsOrder = [];
+        let appData = null;
+        let chartInstance = null;
+
+        // Generates 12 continuous months mapping with their precise calendar year strings
+        function calculateTimelineOrder(startMonthIdx, startYear) {
+            monthsOrder = [];
+            let currentM = startMonthIdx;
+            let currentY = startYear;
+            
+            for (let i = 0; i < 12; i++) {
+                monthsOrder.push(`${standardCalendarMonths[currentM]} ${currentY}`);
+                currentM++;
+                if (currentM > 11) {
+                    currentM = 0;
+                    currentY++;
+                }
+            }
+        }
+
+        // Initialize and clean legacy structures to the new year-bind format
+        function initializeSystemFramework() {
+            const localRawData = localStorage.getItem('ibadahAppData');
+            if (localRawData) {
+                appData = JSON.parse(localRawData);
+                
+                // If it is an old legacy storage configuration, adapt seamlessly without data loss
+                if (!appData.timelineConfiguration) {
+                    appData.timelineConfiguration = { startMonth: 8, startYear: 2025 }; // Fallback target layout baseline (Sep 2025)
+                    
+                    // Convert old year-less strings to explicit target dates if required
+                    const updatedOverrides = {};
+                    const baseMap = { "Sep": "2025", "Oct": "2025", "Nov": "2025", "Dec": "2025", "Jan": "2026", "Feb": "2026", "Mar": "2026", "Apr": "2026", "May": "2026", "Jun": "2026", "Jul": "2026", "Aug": "2026" };
+                    Object.keys(appData.monthlyOverrides || {}).forEach(k => {
+                        if (baseMap[k]) {
+                            updatedOverrides[`${k} ${baseMap[k]}`] = appData.monthlyOverrides[k];
+                        } else {
+                            updatedOverrides[k] = appData.monthlyOverrides[k];
+                        }
+                    });
+                    appData.monthlyOverrides = updatedOverrides;
+                }
+            } else {
+                // Initialize default profile parameters
+                appData = {
+                    timelineConfiguration: { startMonth: 8, startYear: 2025 },
+                    dailyLogs: {}, 
+                    monthlyOverrides: {
+                        "Sep 2025": 45, "Oct 2025": 50, "Nov 2025": 73, "Dec 2025": 71, "Jan 2026": 26, 
+                        "Feb 2026": 60, "Mar 2026": 30, "Apr 2026": 73, "May 2026": 81, "Jun 2026": 100, "Jul 2026": 16, "Aug 2026": 0
+                    }
+                };
+            }
+            calculateTimelineOrder(appData.timelineConfiguration.startMonth, appData.timelineConfiguration.startYear);
+        }
+
+        // Trigger safe reset and map alignment to current date constraints
+        function resetTimelineToCurrentMonth() {
+            const confirmation = confirm("🚨 Are you sure you want to reset? This deletes current entry data histories, changes percentages to 0%, and perfectly aligns the new chart workspace starting from this current month and year.");
+            if (!confirmation) return;
+
+            const now = new Date();
+            const currentMonthIdx = now.getMonth();
+            const currentYearStr = now.getFullYear();
+
+            appData = {
+                timelineConfiguration: { startMonth: currentMonthIdx, startYear: currentYearStr },
+                dailyLogs: {},
+                monthlyOverrides: {}
+            };
+
+            // Build fresh clean timeline data fields
+            calculateTimelineOrder(currentMonthIdx, currentYearStr);
+            monthsOrder.forEach(mStr => {
+                appData.monthlyOverrides[mStr] = 0;
+            });
+
+            saveToLocalStorage();
+            buildManualMonthInputs();
+            
+            const todayStr = now.toISOString().split('T')[0];
+            document.getElementById("tracker-date").value = todayStr;
+            loadDateData(todayStr);
+            calculateAndRenderStats();
+
+            alert("✨ Reset complete! Your dashboard is configured cleanly starting from " + monthsOrder[0]);
+        }
+
+        initializeSystemFramework();
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const dateInput = document.getElementById("tracker-date");
+            const today = new Date().toISOString().split('T')[0];
+            dateInput.value = today;
+
+            setupEventListeners();
+            buildManualMonthInputs();
+            loadDateData(today);
+            calculateAndRenderStats();
+        });
+
+        function setupEventListeners() {
+            const dateInput = document.getElementById("tracker-date");
+            dateInput.addEventListener("change", (e) => loadDateData(e.target.value));
+
+            document.getElementById("prev-date-btn").addEventListener("click", () => shiftDate(-1));
+            document.getElementById("next-date-btn").addEventListener("click", () => shiftDate(1));
+
+            document.getElementById("nafal").addEventListener("change", saveCurrentDateData);
+            document.getElementById("quran").addEventListener("change", saveCurrentDateData);
+        }
+
+        function cyclePrayerState(prayerId) {
+            const statusSpan = document.getElementById(`status-${prayerId}`);
+            const currentStatus = statusSpan.innerText === '-' ? '' : statusSpan.innerText;
+            
+            let nextStatus = '';
+            if (currentStatus === '') nextStatus = 'y';
+            else if (currentStatus === 'y') nextStatus = 'Y';
+            else nextStatus = '';
+
+            updateButtonVisualState(prayerId, nextStatus);
+            saveCurrentDateData();
+        }
+
+        function batchLogPrayers(targetStatus) {
+            prayersList.forEach(p => {
+                updateButtonVisualState(p, targetStatus);
+            });
+            saveCurrentDateData();
+        }
+
+        function updateButtonVisualState(prayerId, status) {
+            const btn = document.getElementById(`btn-${prayerId}`);
+            const span = document.getElementById(`status-${prayerId}`);
+            
+            if (status === 'y') {
+                btn.className = "border-sky-400 rounded-lg p-3 cursor-pointer bg-sky-50 text-sky-900 font-medium transition flex flex-col items-center justify-between min-h-20 focus:outline-none shadow-inner";
+                span.innerText = 'y';
+                span.className = "text-xs font-mono font-bold px-2 py-0.5 rounded bg-sky-200 text-sky-800";
+            } else if (status === 'Y') {
+                btn.className = "border-emerald-500 rounded-lg p-3 cursor-pointer bg-emerald-50 text-emerald-900 font-medium transition flex flex-col items-center justify-between min-h-20 focus:outline-none shadow-inner";
+                span.innerText = 'Y';
+                span.className = "text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-200 text-emerald-800";
+            } else {
+                btn.className = "border-gray-200 rounded-lg p-3 cursor-pointer bg-white text-gray-800 transition flex flex-col items-center justify-between min-h-20 focus:outline-none hover:bg-gray-50";
+                span.innerText = '-';
+                span.className = "text-xs font-mono px-2 py-0.5 rounded bg-gray-100 text-gray-400";
+            }
+        }
+
+        function buildManualMonthInputs() {
+            const container = document.getElementById("manual-months-container");
+            container.innerHTML = "";
+            monthsOrder.forEach(monthKey => {
+                const val = appData.monthlyOverrides[monthKey] !== undefined ? appData.monthlyOverrides[monthKey] : 0;
+                const div = document.createElement("div");
+                div.className = "flex flex-col border rounded p-2 bg-gray-50";
+                div.innerHTML = `
+                    <span class="text-[11px] font-bold text-gray-600 mb-1 tracking-tight">${monthKey}</span>
+                    <input type="number" min="0" max="100" data-month="${monthKey}" value="${val}" class="override-input border rounded p-1 text-sm bg-white w-full">
+                `;
+                container.appendChild(div);
+            });
+
+            document.querySelectorAll(".override-input").forEach(input => {
+                input.addEventListener("input", (e) => {
+                    const m = e.target.getAttribute("data-month");
+                    let v = parseInt(e.target.value, 10);
+                    if (isNaN(v)) v = 0;
+                    if (v > 100) v = 100;
+                    if (v < 0) v = 0;
+                    appData.monthlyOverrides[m] = v;
+                    saveToLocalStorage();
+                    calculateAndRenderStats();
+                });
+            });
+        }
+
+        function loadDateData(dateStr) {
+            const log = appData.dailyLogs[dateStr] || { fajr: '', dhuhr: '', asr: '', maghrib: '', isha: '', nafal: false, quran: false };
+            
+            prayersList.forEach(p => {
+                const status = typeof log[p] === 'boolean' ? (log[p] ? 'y' : '') : (log[p] || '');
+                updateButtonVisualState(p, status);
+            });
+
+            document.getElementById("nafal").checked = log.nafal || false;
+            document.getElementById("quran").checked = log.quran || false;
+
+            updateDailyCountDisplay();
+        }
+
+        function shiftDate(daysToShift) {
+            const dateInput = document.getElementById("tracker-date");
+            const currentDate = new Date(dateInput.value);
+            if (!isNaN(currentDate.getTime())) {
+                currentDate.setDate(currentDate.getDate() + daysToShift);
+                const newDateStr = currentDate.toISOString().split('T')[0];
+                dateInput.value = newDateStr;
+                loadDateData(newDateStr);
+            }
+        }
+
+        function saveCurrentDateData() {
+            const dateStr = document.getElementById("tracker-date").value;
+            
+            appData.dailyLogs[dateStr] = {
+                fajr: document.getElementById('status-fajr').innerText === '-' ? '' : document.getElementById('status-fajr').innerText,
+                dhuhr: document.getElementById('status-dhuhr').innerText === '-' ? '' : document.getElementById('status-dhuhr').innerText,
+                asr: document.getElementById('status-asr').innerText === '-' ? '' : document.getElementById('status-asr').innerText,
+                maghrib: document.getElementById('status-maghrib').innerText === '-' ? '' : document.getElementById('status-maghrib').innerText,
+                isha: document.getElementById('status-isha').innerText === '-' ? '' : document.getElementById('status-isha').innerText,
+                nafal: document.getElementById("nafal").checked,
+                quran: document.getElementById("quran").checked
+            };
+            updateDailyCountDisplay();
+            saveToLocalStorage();
+            calculateAndRenderStats();
+        }
+
+        function updateDailyCountDisplay() {
+            let count = 0;
+            prayersList.forEach(p => {
+                const txt = document.getElementById(`status-${p}`).innerText;
+                if (txt === 'y' || txt === 'Y') count++;
+            });
+            document.getElementById("daily-count").innerText = `${count} / 5`;
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('ibadahAppData', JSON.stringify(appData));
+        }
+
+        function exportDataBackup() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "ibadah_tracker_backup.json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importDataBackup(event) {
+            const fileReader = new FileReader();
+            fileReader.onload = function(e) {
+                try {
+                    const parsedData = JSON.parse(e.target.result);
+                    if(parsedData.dailyLogs && parsedData.monthlyOverrides) {
+                        appData = parsedData;
+                        
+                        // Parse configuration boundaries if missing from older formats
+                        if (!appData.timelineConfiguration) {
+                            appData.timelineConfiguration = { startMonth: 8, startYear: 2025 };
+                        }
+                        
+                        saveToLocalStorage();
+                        calculateTimelineOrder(appData.timelineConfiguration.startMonth, appData.timelineConfiguration.startYear);
+                        buildManualMonthInputs();
+                        loadDateData(document.getElementById("tracker-date").value);
+                        calculateAndRenderStats();
+                        alert("🎉 Backup loaded successfully! Data context synchronized perfectly.");
+                    } else {
+                        alert("❌ Invalid backup file structure.");
+                    }
+                } catch(err) {
+                    alert("❌ Error reading backup file contents.");
+                }
+            };
+            if(event.target.files[0]) {
+                fileReader.readAsText(event.target.files[0]);
+            }
+        }
+
+        function calculateAndRenderStats() {
+            const tableBody = document.getElementById("summary-table-body");
+            tableBody.innerHTML = "";
+
+            const today = new Date();
+            const activeSystemMonthStr = `${monthMap[today.getMonth()]} ${today.getFullYear()}`;
+
+            const daysInMonthMap = { "Jan": 31, "Mar": 31, "Apr": 30, "May": 31, "Jun": 30, "Jul": 31, "Aug": 31, "Sep": 30, "Oct": 31, "Nov": 30, "Dec": 31 };
+
+            const liveCalculations = {};
+            monthsOrder.forEach(m => { liveCalculations[m] = { checkedPrayers: 0, hasLiveEntries: false }; });
+
+            Object.keys(appData.dailyLogs).forEach(dateStr => {
+                const parts = dateStr.split('-');
+                if (parts.length === 3) {
+                    const dateObj = new Date(dateStr);
+                    const shortMonthKey = `${monthMap[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
+                    
+                    if (liveCalculations[shortMonthKey]) {
+                        const dayLog = appData.dailyLogs[dateStr];
+                        let checkedInDay = 0;
+                        prayersList.forEach(p => {
+                            const val = dayLog[p];
+                            if (val === 'y' || val === 'Y' || val === true) {
+                                checkedInDay++;
+                            }
+                        });
+                        
+                        liveCalculations[shortMonthKey].checkedPrayers += checkedInDay;
+                        if (checkedInDay > 0 || dayLog.nafal || dayLog.quran) {
+                            liveCalculations[shortMonthKey].hasLiveEntries = true;
+                        }
+                    }
+                }
+            });
+
+            const percentagesMap = {};
+            monthsOrder.forEach(monthKey => {
+                let percent = appData.monthlyOverrides[monthKey] !== undefined ? appData.monthlyOverrides[monthKey] : 0;
+                const liveData = liveCalculations[monthKey];
+                if (liveData && liveData.hasLiveEntries) {
+                    const pureMonthName = monthKey.split(' ')[0];
+                    let daysInMonth = daysInMonthMap[pureMonthName];
+                    if (pureMonthName === "Feb") {
+                        const targetYear = parseInt(monthKey.split(' ')[1], 10);
+                        daysInMonth = (targetYear % 4 === 0 && (targetYear % 100 !== 0 || targetYear % 400 === 0)) ? 29 : 28;
+                    }
+                    const totalPossiblePrayersInMonth = daysInMonth * 5;
+                    percent = Math.round((liveData.checkedPrayers / totalPossiblePrayersInMonth) * 100);
+                }
+                percentagesMap[monthKey] = percent;
+            });
+
+            const currentMonthWeightIndex = monthsOrder.indexOf(activeSystemMonthStr);
+
+            const finalPercentages = monthsOrder.map((monthKey, index) => {
+                const currentPercent = percentagesMap[monthKey];
+                const loopMonthWeightIndex = index;
+                
+                let trendHTML = `<span class="text-gray-400 font-mono text-xs">--</span>`; 
+
+                if (loopMonthWeightIndex > 0 && (currentMonthWeightIndex === -1 || loopMonthWeightIndex <= currentMonthWeightIndex)) {
+                    const prevMonth = monthsOrder[index - 1];
+                    const prevPercent = percentagesMap[prevMonth];
+                    const variance = currentPercent - prevPercent;
+
+                    if (variance > 0) {
+                        trendHTML = `<span class="text-emerald-600 font-bold flex items-center justify-center gap-0.5 text-xs">▲ +${variance}%</span>`;
+                    } else if (variance < 0) {
+                        trendHTML = `<span class="text-rose-600 font-bold flex items-center justify-center gap-0.5 text-xs">▼ ${variance}%</span>`;
+                    } else {
+                        trendHTML = `<span class="text-gray-500 font-bold text-xs">• 0%</span>`;
+                    }
+                }
+
+                if (monthKey === activeSystemMonthStr) {
+                    trendHTML = `<span class="text-blue-500 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded text-[10px] font-bold tracking-tight uppercase">Current</span>`;
+                }
+
+                const tr = document.createElement("tr");
+                tr.className = currentPercent === 100 ? "bg-emerald-50 text-emerald-900 font-semibold" : "";
+                tr.innerHTML = `
+                    <td class="p-3 font-medium text-xs">${monthKey}</td>
+                    <td class="p-3 text-center">${trendHTML}</td>
+                    <td class="p-3 text-right font-mono">${currentPercent}%</td>
+                `;
+                tableBody.appendChild(tr);
+
+                return currentPercent;
+            });
+
+            const ctx = document.getElementById('monthlyChart').getContext('2d');
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            const backgroundColors = finalPercentages.map(pct => pct === 100 ? 'rgba(16, 185, 129, 0.8)' : 'rgba(56, 189, 248, 0.8)');
+            const borderColors = finalPercentages.map(pct => pct === 100 ? 'rgba(16, 185, 129, 1)' : 'rgba(56, 189, 248, 1)');
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: monthsOrder,
+                    datasets: [{
+                        label: 'Achieved Completion %',
+                        data: finalPercentages,
+                        backgroundColor: backgroundColors,
+                        borderColor: borderColors,
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                plugins: [ChartDataLabels],
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: { callback: value => value + "%" }
+                        }
+                    },
+                    plugins: {
+                        datalabels: {
+                            anchor: 'end',
+                            align: 'start',
+                            offset: 4,
+                            rotation: -90,
+                            color: '#FFFFFF',
+                            font: {
+                                weight: 'bold',
+                                size: 11
+                            },
+                            formatter: function(value) {
+                                return value > 0 ? value + '%' : '';
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
