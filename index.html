@@ -221,29 +221,23 @@
             onSnapshot 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // ==========================================
-        // TODO: PASTE YOUR FIREBASE CONFIG HERE
-        // ==========================================
+        // Firebase credentials
         const firebaseConfig = {
-  apiKey: "AIzaSyDy_wCamaPUyg3YM9pVGzE7zlogySTASwI",
-  authDomain: "ibadah-tracker-5fa66.firebaseapp.com",
-  projectId: "ibadah-tracker-5fa66",
-  storageBucket: "ibadah-tracker-5fa66.firebasestorage.app",
-  messagingSenderId: "218578693694",
-  appId: "1:218578693694:web:da99913874e66f7c54ab6f"
-};
+            apiKey: "AIzaSyDy_wCamaPUyg3YM9pVGzE7zlogySTASwI",
+            authDomain: "ibadah-tracker-5fa66.firebaseapp.com",
+            projectId: "ibadah-tracker-5fa66",
+            storageBucket: "ibadah-tracker-5fa66.firebasestorage.app",
+            messagingSenderId: "218578693694",
+            appId: "1:218578693694:web:da99913874e66f7c54ab6f"
+        };
 
-
-        // Initialize Firebase services
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Global state tracking sync variables
         window.currentUser = null;
         let unsubscribeDbListener = null;
 
-        // Manage visual display states based on session status
         onAuthStateChanged(auth, async (user) => {
             const loadingBar = document.getElementById("auth-loading");
             const loggedOutPanel = document.getElementById("auth-logged-out");
@@ -258,7 +252,6 @@
                 loggedOutPanel.classList.add("hidden");
                 loggedInPanel.classList.remove("hidden");
 
-                // Check and upload any current local progress to seed database first
                 const localData = localStorage.getItem('ibadahAppData');
                 if (localData) {
                     try {
@@ -269,13 +262,12 @@
                     }
                 }
 
-                // Attach automated listening stream to cloud changes
                 unsubscribeDbListener = onSnapshot(doc(db, "users", user.uid), (docSnapshot) => {
                     if (docSnapshot.exists()) {
                         window.appData = docSnapshot.data();
                         localStorage.setItem('ibadahAppData', JSON.stringify(window.appData));
                         
-                        window.calculateTimelineOrder(window.appData.timelineConfiguration.startMonth, window.appData.timelineConfiguration.startYear);
+                        window.calculateTimelineOrder();
                         window.buildManualMonthInputs();
                         window.loadDateData(document.getElementById("tracker-date").value);
                         window.calculateAndRenderStats();
@@ -288,7 +280,6 @@
                 loggedOutPanel.classList.remove("hidden");
                 loggedInPanel.classList.add("hidden");
 
-                // Fallback cleanly to absolute offline localStorage
                 window.initializeSystemFramework();
                 window.buildManualMonthInputs();
                 window.loadDateData(document.getElementById("tracker-date").value);
@@ -296,14 +287,13 @@
             }
         });
 
-        // Form registration and submission processing
         document.getElementById("btn-signup").addEventListener("click", async () => {
             const email = document.getElementById("auth-email").value;
             const pass = document.getElementById("auth-password").value;
             if (!email || !pass) return alert("Please fill in both fields!");
 
             try {
-                const creds = await createUserWithEmailAndPassword(auth, email, pass);
+                await createUserWithEmailAndPassword(auth, email, pass);
                 alert("Account created and dynamic sync enabled!");
             } catch (err) {
                 alert("Registration Error: " + err.message);
@@ -332,7 +322,6 @@
             }
         });
 
-        // Expose function globally to let standard tracker events sync to database
         window.syncDataToBackend = async function() {
             if (window.currentUser) {
                 try {
@@ -344,7 +333,7 @@
         };
     </script>
 
-    <!-- CLASSIC APPLICATION LOGIC -->
+    <!-- APPLICATION LOGIC -->
     <script>
         const standardCalendarMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
         const monthMap = { 0: "Jan", 1: "Feb", 2: "Mar", 3: "Apr", 4: "May", 5: "Jun", 6: "Jul", 7: "Aug", 8: "Sep", 9: "Oct", 10: "Nov", 11: "Dec" };
@@ -354,11 +343,24 @@
         window.appData = null;
         let chartInstance = null;
 
-        function calculateTimelineOrder(startMonthIdx, startYear) {
+        // Automatically rolls the 12-month window to end at the active date/month
+        function calculateTimelineOrder(referenceDate = null) {
             monthsOrder = [];
-            let currentM = startMonthIdx;
+            const target = referenceDate ? new Date(referenceDate) : new Date();
+            const endMonth = target.getMonth();
+            const endYear = target.getFullYear();
+
+            // Calculate start date 11 months prior to form a complete 12-month span
+            let startMonth = endMonth - 11;
+            let startYear = endYear;
+            if (startMonth < 0) {
+                startMonth += 12;
+                startYear -= 1;
+            }
+
+            let currentM = startMonth;
             let currentY = startYear;
-            
+
             for (let i = 0; i < 12; i++) {
                 monthsOrder.push(`${standardCalendarMonths[currentM]} ${currentY}`);
                 currentM++;
@@ -374,50 +376,33 @@
             const localRawData = localStorage.getItem('ibadahAppData');
             if (localRawData) {
                 window.appData = JSON.parse(localRawData);
-                
-                if (!window.appData.timelineConfiguration) {
-                    window.appData.timelineConfiguration = { startMonth: 8, startYear: 2025 };
-                    
-                    const updatedOverrides = {};
-                    const baseMap = { "Sep": "2025", "Oct": "2025", "Nov": "2025", "Dec": "2025", "Jan": "2026", "Feb": "2026", "Mar": "2026", "Apr": "2026", "May": "2026", "Jun": "2026", "Jul": "2026", "Aug": "2026" };
-                    Object.keys(window.appData.monthlyOverrides || {}).forEach(k => {
-                        if (baseMap[k]) {
-                            updatedOverrides[`${k} ${baseMap[k]}`] = window.appData.monthlyOverrides[k];
-                        } else {
-                            updatedOverrides[k] = window.appData.monthlyOverrides[k];
-                        }
-                    });
-                    window.appData.monthlyOverrides = updatedOverrides;
-                }
+                if (!window.appData.monthlyOverrides) window.appData.monthlyOverrides = {};
+                if (!window.appData.dailyLogs) window.appData.dailyLogs = {};
             } else {
                 window.appData = {
-                    timelineConfiguration: { startMonth: 8, startYear: 2025 },
                     dailyLogs: {}, 
                     monthlyOverrides: {
-                        "Sep 2025": 45, "Oct 2025": 50, "Nov 2025": 73, "Dec 2025": 71, "Jan 2026": 26, 
-                        "Feb 2026": 60, "Mar 2026": 30, "Apr 2026": 73, "May 2026": 81, "Jun 2026": 100, "Jul 2026": 16, "Aug 2026": 0
+                        "Oct 2025": 50, "Nov 2025": 73, "Dec 2025": 71, "Jan 2026": 26, 
+                        "Feb 2026": 60, "Mar 2026": 32, "Apr 2026": 73, "May 2026": 81, 
+                        "Jun 2026": 100, "Jul 2026": 16, "Aug 2026": 0, "Sep 2026": 0
                     }
                 };
             }
-            calculateTimelineOrder(window.appData.timelineConfiguration.startMonth, window.appData.timelineConfiguration.startYear);
+            calculateTimelineOrder();
         }
         window.initializeSystemFramework = initializeSystemFramework;
 
         function resetTimelineToCurrentMonth() {
-            const confirmation = confirm("🚨 Are you sure you want to reset? This deletes current entry data histories, changes percentages to 0%, and perfectly aligns the new chart workspace starting from this current month and year.");
+            const confirmation = confirm("🚨 Are you sure you want to reset? This deletes current entry data histories, changes percentages to 0%, and resets your timeline to the last 12 months.");
             if (!confirmation) return;
 
             const now = new Date();
-            const currentMonthIdx = now.getMonth();
-            const currentYearStr = now.getFullYear();
-
             window.appData = {
-                timelineConfiguration: { startMonth: currentMonthIdx, startYear: currentYearStr },
                 dailyLogs: {},
                 monthlyOverrides: {}
             };
 
-            calculateTimelineOrder(currentMonthIdx, currentYearStr);
+            calculateTimelineOrder(now);
             monthsOrder.forEach(mStr => {
                 window.appData.monthlyOverrides[mStr] = 0;
             });
@@ -430,7 +415,7 @@
             loadDateData(todayStr);
             calculateAndRenderStats();
 
-            alert("✨ Reset complete! Your dashboard is configured cleanly starting from " + monthsOrder[0]);
+            alert("✨ Reset complete! Your dashboard workspace is ready.");
         }
 
         document.addEventListener("DOMContentLoaded", () => {
@@ -525,7 +510,7 @@
         window.buildManualMonthInputs = buildManualMonthInputs;
 
         function loadDateData(dateStr) {
-            const log = window.appData.dailyLogs[dateStr] || { fajr: '', dhuhr: '', asr: '', maghrib: '', isha: '', nafal: false, quran: false };
+            const log = (window.appData && window.appData.dailyLogs) ? (window.appData.dailyLogs[dateStr] || {}) : {};
             
             prayersList.forEach(p => {
                 const status = typeof log[p] === 'boolean' ? (log[p] ? 'y' : '') : (log[p] || '');
@@ -553,6 +538,8 @@
         function saveCurrentDateData() {
             const dateStr = document.getElementById("tracker-date").value;
             
+            if (!window.appData.dailyLogs) window.appData.dailyLogs = {};
+
             window.appData.dailyLogs[dateStr] = {
                 fajr: document.getElementById('status-fajr').innerText === '-' ? '' : document.getElementById('status-fajr').innerText,
                 dhuhr: document.getElementById('status-dhuhr').innerText === '-' ? '' : document.getElementById('status-dhuhr').innerText,
@@ -578,7 +565,6 @@
 
         function saveToLocalStorage() {
             localStorage.setItem('ibadahAppData', JSON.stringify(window.appData));
-            // Call globally exposed Firestore upload function
             if (typeof window.syncDataToBackend === 'function') {
                 window.syncDataToBackend();
             }
@@ -599,15 +585,10 @@
             fileReader.onload = function(e) {
                 try {
                     const parsedData = JSON.parse(e.target.result);
-                    if(parsedData.dailyLogs && parsedData.monthlyOverrides) {
+                    if (parsedData.dailyLogs && parsedData.monthlyOverrides) {
                         window.appData = parsedData;
-                        
-                        if (!window.appData.timelineConfiguration) {
-                            window.appData.timelineConfiguration = { startMonth: 8, startYear: 2025 };
-                        }
-                        
                         saveToLocalStorage();
-                        calculateTimelineOrder(window.appData.timelineConfiguration.startMonth, window.appData.timelineConfiguration.startYear);
+                        calculateTimelineOrder();
                         buildManualMonthInputs();
                         loadDateData(document.getElementById("tracker-date").value);
                         calculateAndRenderStats();
@@ -619,7 +600,7 @@
                     alert("❌ Error reading backup file contents.");
                 }
             };
-            if(event.target.files[0]) {
+            if (event.target.files[0]) {
                 fileReader.readAsText(event.target.files[0]);
             }
         }
@@ -635,7 +616,7 @@
             const liveCalculations = {};
             monthsOrder.forEach(m => { liveCalculations[m] = { checkedPrayers: 0, hasLiveEntries: false }; });
 
-            Object.keys(window.appData.dailyLogs).forEach(dateStr => {
+            Object.keys(window.appData.dailyLogs || {}).forEach(dateStr => {
                 const parts = dateStr.split('-');
                 if (parts.length === 3) {
                     const dateObj = new Date(dateStr);
@@ -661,7 +642,9 @@
 
             const percentagesMap = {};
             monthsOrder.forEach(monthKey => {
-                let percent = window.appData.monthlyOverrides[monthKey] !== undefined ? window.appData.monthlyOverrides[monthKey] : 0;
+                let percent = (window.appData.monthlyOverrides && window.appData.monthlyOverrides[monthKey] !== undefined) 
+                    ? window.appData.monthlyOverrides[monthKey] 
+                    : 0;
                 const liveData = liveCalculations[monthKey];
                 if (liveData && liveData.hasLiveEntries) {
                     const pureMonthName = monthKey.split(' ')[0];
