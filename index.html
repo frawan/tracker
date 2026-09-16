@@ -134,9 +134,9 @@
                 <!-- Reset Panel -->
                 <div class="bg-white p-6 rounded-xl shadow-md border border-amber-100 space-y-4">
                     <h3 class="text-lg font-semibold text-amber-800">Workspace Management & Sharing</h3>
-                    <p class="text-xs text-amber-700">Clicking reset will delete local and cloud data histories, and dynamically restructure your timeline metrics to start fresh from your absolute current month and year.</p>
+                    <p class="text-xs text-amber-700">Clicking reset will delete local and cloud data histories, and dynamically restructure your timeline metrics to start fresh from your current active 12-month period.</p>
                     <button onclick="resetTimelineToCurrentMonth()" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-medium text-xs rounded-lg shadow transition cursor-pointer">
-                        🔄 Wipe Data & Reset Timeline to Current Month
+                        🔄 Wipe Data & Reset Timeline
                     </button>
                 </div>
 
@@ -171,6 +171,7 @@
 
             <!-- RIGHT COLUMN -->
             <div class="space-y-6">
+                <!-- Monthly Performance Chart -->
                 <div class="bg-white p-6 rounded-xl shadow-md flex flex-col justify-between">
                     <h2 class="text-xl font-semibold mb-4 text-gray-700">Monthly Performance</h2>
                     <div class="relative w-full h-64">
@@ -178,22 +179,23 @@
                     </div>
                 </div>
 
-<!-- Incomplete Days Panel -->
-<div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-amber-500 space-y-3">
-    <div class="flex justify-between items-center">
-        <h2 class="text-lg font-semibold text-gray-700 flex items-center gap-2">
-            <span>⚠️ Incomplete Days</span>
-            <span id="incomplete-month-label" class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold"></span>
-        </h2>
-        <span id="incomplete-badge" class="text-xs font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-700">0 days</span>
-    </div>
-    <p class="text-xs text-gray-500">Days with fewer than 5 prayers logged. Click any date to view and complete it.</p>
-    
-    <div id="incomplete-days-container" class="space-y-2 max-h-56 overflow-y-auto pr-1">
-        <!-- Rendered dynamically -->
-    </div>
-</div>
+                <!-- Incomplete Days Panel -->
+                <div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-amber-500 space-y-3">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-lg font-semibold text-gray-700 flex items-center gap-2">
+                            <span>⚠️ Incomplete Days</span>
+                            <span id="incomplete-month-label" class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold"></span>
+                        </h2>
+                        <span id="incomplete-badge" class="text-xs font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-700">0 days</span>
+                    </div>
+                    <p class="text-xs text-gray-500">Days with fewer than 5 prayers logged. Click any date to view and complete it.</p>
+                    
+                    <div id="incomplete-days-container" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
 
+                <!-- Overview Table -->
                 <details class="bg-white rounded-xl shadow-md group border border-gray-100 block transition-all duration-200" open>
                     <summary class="flex justify-between items-center p-6 cursor-pointer select-none list-none font-semibold text-xl text-gray-700 focus:outline-none">
                         <span>Overview Table</span>
@@ -237,7 +239,6 @@
             onSnapshot 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Firebase credentials
         const firebaseConfig = {
             apiKey: "AIzaSyDy_wCamaPUyg3YM9pVGzE7zlogySTASwI",
             authDomain: "ibadah-tracker-5fa66.firebaseapp.com",
@@ -359,14 +360,14 @@
         window.appData = null;
         let chartInstance = null;
 
-        // Automatically rolls the 12-month window to end at the active date/month
+        // Automatically rolls the 12-month window to end at the selected calendar date
         function calculateTimelineOrder(referenceDate = null) {
             monthsOrder = [];
             const target = referenceDate ? new Date(referenceDate) : new Date();
             const endMonth = target.getMonth();
             const endYear = target.getFullYear();
 
-            // Calculate start date 11 months prior to form a complete 12-month span
+            // Calculate start month 11 months prior to achieve a complete 12-month span
             let startMonth = endMonth - 11;
             let startYear = endYear;
             if (startMonth < 0) {
@@ -409,7 +410,7 @@
         window.initializeSystemFramework = initializeSystemFramework;
 
         function resetTimelineToCurrentMonth() {
-            const confirmation = confirm("🚨 Are you sure you want to reset? This deletes current entry data histories, changes percentages to 0%, and resets your timeline to the last 12 months.");
+            const confirmation = confirm("🚨 Are you sure you want to reset? This deletes current entry data histories, changes percentages to 0%, and resets your timeline workspace.");
             if (!confirmation) return;
 
             const now = new Date();
@@ -448,7 +449,10 @@
 
         function setupEventListeners() {
             const dateInput = document.getElementById("tracker-date");
-            dateInput.addEventListener("change", (e) => loadDateData(e.target.value));
+            dateInput.addEventListener("change", (e) => {
+                loadDateData(e.target.value);
+                calculateAndRenderStats();
+            });
 
             document.getElementById("prev-date-btn").addEventListener("click", () => shiftDate(-1));
             document.getElementById("next-date-btn").addEventListener("click", () => shiftDate(1));
@@ -500,7 +504,9 @@
             const container = document.getElementById("manual-months-container");
             container.innerHTML = "";
             monthsOrder.forEach(monthKey => {
-                const val = window.appData.monthlyOverrides[monthKey] !== undefined ? window.appData.monthlyOverrides[monthKey] : 0;
+                const val = (window.appData.monthlyOverrides && window.appData.monthlyOverrides[monthKey] !== undefined) 
+                    ? window.appData.monthlyOverrides[monthKey] 
+                    : 0;
                 const div = document.createElement("div");
                 div.className = "flex flex-col border rounded p-2 bg-gray-50";
                 div.innerHTML = `
@@ -548,6 +554,7 @@
                 const newDateStr = currentDate.toISOString().split('T')[0];
                 dateInput.value = newDateStr;
                 loadDateData(newDateStr);
+                calculateAndRenderStats();
             }
         }
 
@@ -619,6 +626,105 @@
             if (event.target.files[0]) {
                 fileReader.readAsText(event.target.files[0]);
             }
+        }
+
+        // Navigate directly to a specific date from the Incomplete Days list
+        function jumpToDate(dateStr) {
+            const dateInput = document.getElementById("tracker-date");
+            dateInput.value = dateStr;
+            loadDateData(dateStr);
+            calculateAndRenderStats();
+            dateInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        window.jumpToDate = jumpToDate;
+
+        function renderIncompleteDays() {
+            const container = document.getElementById("incomplete-days-container");
+            const badge = document.getElementById("incomplete-badge");
+            const monthLabel = document.getElementById("incomplete-month-label");
+            if (!container) return;
+
+            // Base target timeframe entirely on the currently selected calendar picker date
+            const dateInputVal = document.getElementById("tracker-date").value;
+            const activeDate = dateInputVal ? new Date(dateInputVal + 'T00:00:00') : new Date();
+            
+            const targetYear = activeDate.getFullYear();
+            const targetMonthIdx = activeDate.getMonth();
+            const targetMonthStrPadded = String(targetMonthIdx + 1).padStart(2, '0');
+            const daysInCurrentMonth = new Date(targetYear, targetMonthIdx + 1, 0).getDate();
+
+            if (monthLabel) {
+                monthLabel.innerText = `${monthMap[targetMonthIdx]} ${targetYear}`;
+            }
+
+            const incompleteList = [];
+            const prayerLabelsArabic = { fajr: 'فجر', dhuhr: 'ظهر', asr: 'عصر', maghrib: 'مغرب', isha: 'عشاء' };
+
+            for (let day = 1; day <= daysInCurrentMonth; day++) {
+                const dayStrPadded = String(day).padStart(2, '0');
+                const dateKey = `${targetYear}-${targetMonthStrPadded}-${dayStrPadded}`;
+                const dayLog = (window.appData && window.appData.dailyLogs) ? (window.appData.dailyLogs[dateKey] || null) : null;
+
+                if (dayLog) {
+                    let completedPrayersCount = 0;
+                    const missingPrayers = [];
+
+                    prayersList.forEach(p => {
+                        const val = dayLog[p];
+                        if (val === 'y' || val === 'Y' || val === true) {
+                            completedPrayersCount++;
+                        } else {
+                            missingPrayers.push(p);
+                        }
+                    });
+
+                    if (completedPrayersCount < 5) {
+                        incompleteList.push({
+                            date: dateKey,
+                            displayDate: `${dayStrPadded}/${targetMonthStrPadded}/${targetYear}`,
+                            completed: completedPrayersCount,
+                            missing: missingPrayers
+                        });
+                    }
+                }
+            }
+
+            if (badge) {
+                badge.innerText = `${incompleteList.length} ${incompleteList.length === 1 ? 'day' : 'days'}`;
+                badge.className = incompleteList.length === 0 
+                    ? "text-xs font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-700"
+                    : "text-xs font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-700";
+            }
+
+            if (incompleteList.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-4 text-emerald-600 text-xs font-semibold bg-emerald-50/50 rounded-lg border border-emerald-100">
+                        🎉 Alhamdulillah! All logged days for this month have 5/5 prayers offered.
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = incompleteList.map(item => `
+                <div onclick="jumpToDate('${item.date}')" 
+                     class="flex items-center justify-between p-2 rounded-lg bg-gray-50 hover:bg-amber-50 border border-gray-200 hover:border-amber-300 transition cursor-pointer group">
+                    <div class="flex items-center gap-2">
+                        <span class="font-mono text-xs font-bold text-gray-700 bg-white px-2 py-1 rounded border group-hover:border-amber-400">
+                            ${item.displayDate}
+                        </span>
+                        <span class="text-xs font-bold text-rose-600">
+                            ${item.completed} / 5
+                        </span>
+                    </div>
+                    <div class="flex gap-1 flex-wrap justify-end">
+                        ${item.missing.map(m => `
+                            <span class="text-[10px] bg-rose-50 text-rose-700 border border-rose-200 rounded px-1.5 py-0.5 font-medium">
+                                ${prayerLabelsArabic[m] || m}
+                            </span>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
         }
 
         function calculateAndRenderStats() {
@@ -763,6 +869,9 @@
                     }
                 }
             });
+
+            // Refresh incomplete days listing whenever stats or prayers update
+            renderIncompleteDays();
         }
         window.calculateAndRenderStats = calculateAndRenderStats;
     </script>
