@@ -178,6 +178,22 @@
                     </div>
                 </div>
 
+<!-- Incomplete Days Panel -->
+<div class="bg-white p-6 rounded-xl shadow-md border-t-4 border-amber-500 space-y-3">
+    <div class="flex justify-between items-center">
+        <h2 class="text-lg font-semibold text-gray-700 flex items-center gap-2">
+            <span>⚠️ Incomplete Days</span>
+            <span id="incomplete-month-label" class="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold"></span>
+        </h2>
+        <span id="incomplete-badge" class="text-xs font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-700">0 days</span>
+    </div>
+    <p class="text-xs text-gray-500">Days with fewer than 5 prayers logged. Click any date to view and complete it.</p>
+    
+    <div id="incomplete-days-container" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+        <!-- Rendered dynamically -->
+    </div>
+</div>
+
                 <details class="bg-white rounded-xl shadow-md group border border-gray-100 block transition-all duration-200" open>
                     <summary class="flex justify-between items-center p-6 cursor-pointer select-none list-none font-semibold text-xl text-gray-700 focus:outline-none">
                         <span>Overview Table</span>
