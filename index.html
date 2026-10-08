@@ -35,9 +35,9 @@
             <!-- Auth Status (Shown when Logged In) -->
             <div id="auth-logged-in" class="hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div class="flex items-center gap-3">
-                    <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <div id="sync-dot" class="w-2 h-2 rounded-full bg-emerald-500"></div>
                     <div>
-                        <span class="text-xs uppercase text-emerald-800 font-bold tracking-wider block">Connected & Syncing</span>
+                        <span id="sync-status" class="text-xs uppercase text-emerald-800 font-bold tracking-wider block">Connected · Saved ✓</span>
                         <span id="user-display-email" class="text-sm font-semibold text-gray-700">user@gmail.com</span>
                     </div>
                 </div>
@@ -233,10 +233,16 @@
             onAuthStateChanged 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { 
-            getFirestore, 
+            initializeFirestore,
+            persistentLocalCache,
+            persistentMultipleTabManager,
             doc, 
+            getDoc,
+            getDocFromServer,
             setDoc, 
-            onSnapshot 
+            updateDoc,
+            onSnapshot,
+            FieldPath
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -250,7 +256,11 @@
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        const db = getFirestore(app);
+        // Offline cache (IndexedDB): writes are stored on the device immediately and
+        // are sent as soon as there is a connection, even if the tab was closed first.
+        const db = initializeFirestore(app, {
+            localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+        });
 
         window.currentUser = null;
         let unsubscribeDbListener = null;
@@ -269,31 +279,37 @@
                 loggedOutPanel.classList.add("hidden");
                 loggedInPanel.classList.remove("hidden");
 
-                const localData = localStorage.getItem('ibadahAppData');
-                if (localData) {
-                    try {
-                        const parsedLocal = JSON.parse(localData);
-                        await setDoc(doc(db, "users", user.uid), parsedLocal, { merge: true });
-                    } catch (e) {
-                        console.error("Error seeding local data to cloud:", e);
+                const userRef = doc(db, "users", user.uid);
+
+                // Only seed the cloud when it has NO data yet. Pushing local data on every
+                // load let an out-of-date device overwrite newer entries from another device.
+                try {
+                    const existing = await getDoc(userRef);
+                    if (!existing.exists()) {
+                        const localData = localStorage.getItem('ibadahAppData');
+                        const seed = localData ? JSON.parse(localData) : window.appData;
+                        if (seed) await setDoc(userRef, seed);
                     }
+                } catch (e) {
+                    console.error("Error checking/seeding cloud data:", e);
                 }
 
-                unsubscribeDbListener = onSnapshot(doc(db, "users", user.uid), (docSnapshot) => {
-                    if (docSnapshot.exists()) {
-                        window.appData = docSnapshot.data();
-                        localStorage.setItem('ibadahAppData', JSON.stringify(window.appData));
-                        
-                        window.calculateTimelineOrder();
-                        window.buildManualMonthInputs();
-                        window.loadDateData(document.getElementById("tracker-date").value);
-                        window.calculateAndRenderStats();
-                    }
+                if (unsubscribeDbListener) unsubscribeDbListener();
+                unsubscribeDbListener = onSnapshot(userRef, { includeMetadataChanges: true }, (docSnapshot) => {
+                    const meta = docSnapshot.metadata;
+                    if (meta.hasPendingWrites) setSyncStatus("saving");
+                    else if (meta.fromCache && !navigator.onLine) setSyncStatus("offline");
+                    else setSyncStatus("saved");
+
+                    if (docSnapshot.exists()) applyCloudData(docSnapshot.data());
+                }, (err) => {
+                    console.error("Live sync listener error:", err);
+                    setSyncStatus("error");
                 });
 
             } else {
                 window.currentUser = null;
-                if (unsubscribeDbListener) unsubscribeDbListener();
+                if (unsubscribeDbListener) { unsubscribeDbListener(); unsubscribeDbListener = null; }
                 loggedOutPanel.classList.remove("hidden");
                 loggedInPanel.classList.add("hidden");
 
@@ -303,6 +319,49 @@
                 window.calculateAndRenderStats();
             }
         });
+
+        function applyCloudData(data) {
+            window.appData = data;
+            if (!window.appData.dailyLogs) window.appData.dailyLogs = {};
+            if (!window.appData.monthlyOverrides) window.appData.monthlyOverrides = {};
+            localStorage.setItem('ibadahAppData', JSON.stringify(window.appData));
+            window.calculateTimelineOrder();
+            window.buildManualMonthInputs();
+            window.loadDateData(document.getElementById("tracker-date").value);
+            window.calculateAndRenderStats();
+        }
+
+        function setSyncStatus(state) {
+            const label = document.getElementById("sync-status");
+            const dot = document.getElementById("sync-dot");
+            if (!label || !dot) return;
+            const states = {
+                saving:  ["Saving…", "text-amber-700", "bg-amber-500 animate-pulse"],
+                saved:   ["Connected · Saved ✓", "text-emerald-800", "bg-emerald-500"],
+                offline: ["Offline · will sync when online", "text-gray-600", "bg-gray-400"],
+                error:   ["Sync error · check connection", "text-rose-700", "bg-rose-500"]
+            };
+            const [text, color, dotCls] = states[state] || states.saved;
+            label.innerText = text;
+            label.className = `text-xs uppercase font-bold tracking-wider block ${color}`;
+            dot.className = `w-2 h-2 rounded-full ${dotCls}`;
+        }
+
+        // Pull the latest copy whenever the app comes back to the foreground
+        // (phone unlocked, switched back to the browser, laptop woken from sleep).
+        async function refreshFromServer() {
+            if (!window.currentUser) return;
+            try {
+                const snap = await getDocFromServer(doc(db, "users", window.currentUser.uid));
+                if (snap.exists()) applyCloudData(snap.data());
+            } catch (e) {
+                setSyncStatus("offline");
+            }
+        }
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "visible") refreshFromServer();
+        });
+        window.addEventListener("online", refreshFromServer);
 
         document.getElementById("btn-signup").addEventListener("click", async () => {
             const email = document.getElementById("auth-email").value;
@@ -333,19 +392,44 @@
         document.getElementById("btn-logout").addEventListener("click", async () => {
             try {
                 await signOut(auth);
-                alert("Signed out. Using local storage values.");
+                // Don't leave this account's data on a shared device
+                localStorage.removeItem('ibadahAppData');
+                alert("Signed out. Local copy cleared from this device.");
             } catch (err) {
                 alert("Sign Out Error: " + err.message);
             }
         });
 
+        // Full overwrite: only for Reset and Restore-from-Backup
         window.syncDataToBackend = async function() {
-            if (window.currentUser) {
-                try {
-                    await setDoc(doc(db, "users", window.currentUser.uid), window.appData);
-                } catch (e) {
-                    console.error("Cloud synchronization failed:", e);
-                }
+            if (!window.currentUser) return;
+            try {
+                await setDoc(doc(db, "users", window.currentUser.uid), window.appData);
+            } catch (e) {
+                console.error("Cloud synchronization failed:", e);
+                setSyncStatus("error");
+            }
+        };
+
+        // Day-level save: only the changed date is sent, so two devices never
+        // overwrite each other's other days.
+        window.saveDayToCloud = async function(dateStr, entry) {
+            if (!window.currentUser) return;
+            try {
+                await updateDoc(doc(db, "users", window.currentUser.uid), new FieldPath("dailyLogs", dateStr), entry);
+            } catch (e) {
+                console.error("Day sync failed:", e);
+                setSyncStatus("error");
+            }
+        };
+
+        window.saveMonthToCloud = async function(monthKey, value) {
+            if (!window.currentUser) return;
+            try {
+                await updateDoc(doc(db, "users", window.currentUser.uid), new FieldPath("monthlyOverrides", monthKey), value);
+            } catch (e) {
+                console.error("Month sync failed:", e);
+                setSyncStatus("error");
             }
         };
     </script>
@@ -355,6 +439,15 @@
         const standardCalendarMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
         const monthMap = { 0: "Jan", 1: "Feb", 2: "Mar", 3: "Apr", 4: "May", 5: "Jun", 6: "Jul", 7: "Aug", 8: "Sep", 9: "Oct", 10: "Nov", 11: "Dec" };
         const prayersList = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+
+        // Local calendar date (YYYY-MM-DD). toISOString() uses UTC, which in Pakistan
+        // (UTC+5) gave yesterday's date between 12:00 AM and 5:00 AM.
+        function localDateStr(d = new Date()) {
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+        function parseLocalDate(dateStr) {
+            return new Date(dateStr + 'T00:00:00');
+        }
 
         let monthsOrder = [];
         window.appData = null;
@@ -427,7 +520,7 @@
             saveToLocalStorage();
             buildManualMonthInputs();
             
-            const todayStr = now.toISOString().split('T')[0];
+            const todayStr = localDateStr(now);
             document.getElementById("tracker-date").value = todayStr;
             loadDateData(todayStr);
             calculateAndRenderStats();
@@ -437,7 +530,7 @@
 
         document.addEventListener("DOMContentLoaded", () => {
             const dateInput = document.getElementById("tracker-date");
-            const today = new Date().toISOString().split('T')[0];
+            const today = localDateStr();
             dateInput.value = today;
 
             setupEventListeners();
@@ -524,7 +617,8 @@
                     if (v > 100) v = 100;
                     if (v < 0) v = 0;
                     window.appData.monthlyOverrides[m] = v;
-                    saveToLocalStorage();
+                    saveLocalOnly();
+                    if (typeof window.saveMonthToCloud === 'function') window.saveMonthToCloud(m, v);
                     calculateAndRenderStats();
                 });
             });
@@ -548,10 +642,10 @@
 
         function shiftDate(daysToShift) {
             const dateInput = document.getElementById("tracker-date");
-            const currentDate = new Date(dateInput.value);
+            const currentDate = parseLocalDate(dateInput.value);
             if (!isNaN(currentDate.getTime())) {
                 currentDate.setDate(currentDate.getDate() + daysToShift);
-                const newDateStr = currentDate.toISOString().split('T')[0];
+                const newDateStr = localDateStr(currentDate);
                 dateInput.value = newDateStr;
                 loadDateData(newDateStr);
                 calculateAndRenderStats();
@@ -563,7 +657,7 @@
             
             if (!window.appData.dailyLogs) window.appData.dailyLogs = {};
 
-            window.appData.dailyLogs[dateStr] = {
+            const entry = window.appData.dailyLogs[dateStr] = {
                 fajr: document.getElementById('status-fajr').innerText === '-' ? '' : document.getElementById('status-fajr').innerText,
                 dhuhr: document.getElementById('status-dhuhr').innerText === '-' ? '' : document.getElementById('status-dhuhr').innerText,
                 asr: document.getElementById('status-asr').innerText === '-' ? '' : document.getElementById('status-asr').innerText,
@@ -573,7 +667,8 @@
                 quran: document.getElementById("quran").checked
             };
             updateDailyCountDisplay();
-            saveToLocalStorage();
+            saveLocalOnly();
+            if (typeof window.saveDayToCloud === 'function') window.saveDayToCloud(dateStr, entry);
             calculateAndRenderStats();
         }
 
@@ -586,6 +681,11 @@
             document.getElementById("daily-count").innerText = `${count} / 5`;
         }
 
+        function saveLocalOnly() {
+            localStorage.setItem('ibadahAppData', JSON.stringify(window.appData));
+        }
+
+        // Full save (local + whole cloud document) — used by Reset and Restore Backup
         function saveToLocalStorage() {
             localStorage.setItem('ibadahAppData', JSON.stringify(window.appData));
             if (typeof window.syncDataToBackend === 'function') {
@@ -741,7 +841,7 @@
             Object.keys(window.appData.dailyLogs || {}).forEach(dateStr => {
                 const parts = dateStr.split('-');
                 if (parts.length === 3) {
-                    const dateObj = new Date(dateStr);
+                    const dateObj = parseLocalDate(dateStr);
                     const shortMonthKey = `${monthMap[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
                     
                     if (liveCalculations[shortMonthKey]) {
@@ -775,6 +875,8 @@
                         const targetYear = parseInt(monthKey.split(' ')[1], 10);
                         daysInMonth = (targetYear % 4 === 0 && (targetYear % 100 !== 0 || targetYear % 400 === 0)) ? 29 : 28;
                     }
+                    // Current month: measure against days elapsed so far, not the whole month
+                    if (monthKey === activeSystemMonthStr) daysInMonth = today.getDate();
                     const totalPossiblePrayersInMonth = daysInMonth * 5;
                     percent = Math.round((liveData.checkedPrayers / totalPossiblePrayersInMonth) * 100);
                 }

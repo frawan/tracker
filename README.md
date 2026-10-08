@@ -20,7 +20,11 @@ A lightweight, privacy-focused, single-file web application designed to track da
 
 \* \*\*Dynamic Workspace Reset:\*\* A master workspace control allowing users to purge historical logs and instantly generate a fresh, chronological 12-month tracker starting from the exact current month and year.
 
-\* \*\*Zero-Server Privacy:\*\* Powered completely client-side. All progress data is cached instantly in your browser's local storage.
+\* \*\*Cloud Sync Across Devices:\*\* Optional login (Firebase Auth + Firestore) syncs your logs between phone and laptop in real time. Works offline too: entries are saved on the device and upload automatically when you're back online. A status indicator shows \*Saving…\* / \*Saved ✓\* / \*Offline\*.
+
+\* \*\*Local Mode:\*\* Without logging in, all data stays in your browser's local storage.
+
+
 
 \* \*\*Data Portability:\*\* Includes full JSON import and export tools so you can download local backups and restore them on any device without loss.
 
@@ -42,7 +46,9 @@ This project is optimized as a single-file portable utility that requires no com
 
 \* \*\*Data Visualization:\*\* Chart.js \& ChartJS Plugin Datalabels (via CDN)
 
-\* \*\*Storage Engine:\*\* Browser Native `localStorage` API
+\* \*\*Storage Engine:\*\* Firebase Firestore (with offline cache) when logged in; browser `localStorage` otherwise
+
+\* \*\*Auth:\*\* Firebase Authentication (email/password)
 
 
 
@@ -66,3 +72,23 @@ Since the entire system is encapsulated within a single codebase, launching it i
 
 4\. \*\*Backup Regularly:\*\* Use the built-in backup panel to keep your personal records safe.
 
+
+
+\---
+
+
+
+\## 🔒 Firestore Security Rules
+
+The Firebase API key in `index.html` is public by design. Your data is protected by Firestore rules, which must restrict each user to their own document:
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}
+```
