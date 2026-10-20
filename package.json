@@ -12,6 +12,7 @@
     "android:sync": "node scripts/copy-web.mjs && cap sync android"
   },
   "devDependencies": {
+    "@capacitor/assets": "3.0.5",
     "@capacitor/cli": "8.5.3",
     "@tailwindcss/cli": "4.3.3",
     "chart.js": "4.5.1",

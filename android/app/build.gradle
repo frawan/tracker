@@ -7,8 +7,10 @@ android {
         applicationId "com.frawan.ibadahtracker"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // CI passes these (-PappVersionCode / -PappVersionName); local builds use the defaults
+        versionCode (project.findProperty('appVersionCode') ?: '1') as int
+        versionName project.findProperty('appVersionName') ?: '2.1.0'
+
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -17,6 +19,17 @@ android {
         }
     }
     signingConfigs {
+        // Real release key. Only GitHub Actions has it (from repository secrets);
+        // it is never stored in the repo. See docs/android/RELEASING.md.
+        release {
+            def ks = System.getenv('RELEASE_KEYSTORE_PATH')
+            if (ks) {
+                storeFile file(ks)
+                storePassword System.getenv('RELEASE_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('RELEASE_KEY_ALIAS')
+                keyPassword System.getenv('RELEASE_KEY_PASSWORD')
+            }
+        }
         // Shared test-only key (password "android", like Android's default debug key) so each
         // test build from GitHub Actions installs over the previous one. Never used for releases.
         testDebug {
@@ -34,6 +47,7 @@ android {
             signingConfig signingConfigs.testDebug
         }
         release {
+            if (System.getenv('RELEASE_KEYSTORE_PATH')) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

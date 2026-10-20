@@ -78,7 +78,7 @@ Ship the existing web app (`index.html`, v2.0) as an installable Android app for
 
 ### R7 — Build on GitHub Actions
 - R7.1 Workflow `android.yml` runs on pushes to `android/**` branches and on PRs to `main`: installs deps, bundles libs, syncs Capacitor, builds a **debug APK** and uploads it as a workflow artifact.
-- R7.2 On a version tag (`v2.1.0` etc.) it builds a **signed release APK** and attaches it to a GitHub Release. versionName from the tag, versionCode from the run number (always increasing).
+- R7.2 The CEO starts a release by hand (*Actions → Release → Run workflow*, entering a version such as `2.1.0`); it builds a **signed release APK** and publishes it as a GitHub Release with tag `v2.1.0`. versionName from the input, versionCode from the run number (always increasing). *Changed from tag-triggered on 20-Oct-2026 so a release is one explicit CEO action.*
 - R7.3 Signing keystore is stored only in GitHub Secrets (never committed). Without a stable keystore every build has a different signature, and Android refuses to install an update over the previous version — users would have to uninstall and lose local-mode data.
 - R7.4 Building never deploys anything and never merges anything (CEO decides releases).
 - R7.5 Build time target: under 10 minutes; Gradle and npm caches enabled.
@@ -114,7 +114,7 @@ All four decided by the CEO on 20-Oct-2026.
 | D1 | App ID (permanent once installed/published) | `com.frawan.ibadahtracker` |
 | D2 | Name under the icon | `Ibadah Tracker` |
 | D3 | Release signing | Stable keystore in GitHub Secrets (Dave generates it; Farrukh adds the secrets and keeps an offline copy) |
-| D4 | Icon artwork | Dave drafts a simple emerald mosque/crescent mark for CEO approval |
+| D4 | Icon artwork | Dave drafted three options; CEO chose **A · Mosque** (dome, two minarets, crescent) on 20-Oct-2026 |
 
 ## 8. Acceptance tests (Quantum runs these on every PR)
 

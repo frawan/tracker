@@ -36,7 +36,7 @@ jobs:
 
       - name: Build test APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleDebug --no-daemon -PappVersionCode=${{ github.run_number }}
 
       - name: Name the APK
         run: |

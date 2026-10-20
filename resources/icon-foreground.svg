@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#059669"/><stop offset="1" stop-color="#047857"/></linearGradient></defs>
+  
+  <g fill="#ffffff">
+    <!-- crescent on top of dome -->
+    <path d="M512 252 a34 34 0 1 0 24 58 a27 27 0 1 1 -24 -58z"/>
+    <rect x="507" y="312" width="10" height="44" rx="5"/>
+    <!-- dome -->
+    <path d="M372 520 C372 430 440 376 512 356 C584 376 652 430 652 520 Z"/>
+    <!-- body -->
+    <rect x="352" y="520" width="320" height="200" rx="10"/>
+    <!-- minarets -->
+    <rect x="296" y="420" width="40" height="300" rx="8"/>
+    <path d="M296 420 L316 372 L336 420 Z"/>
+    <rect x="688" y="420" width="40" height="300" rx="8"/>
+    <path d="M688 420 L708 372 L728 420 Z"/>
+  </g>
+  <!-- door -->
+  <path d="M472 720 V640 a40 40 0 0 1 80 0 V720 Z" fill="#047857"/>
+</svg>
