@@ -77,12 +77,14 @@ jobs:
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
           "$APKSIGNER" verify --print-certs android/app/build/outputs/apk/release/app-release.apk | head -3
           cp android/app/build/outputs/apk/release/app-release.apk "ibadah-tracker-v${{ inputs.version }}.apk"
+          # Same file under a fixed name, so .../releases/latest/download/ibadah-tracker.apk always works
+          cp android/app/build/outputs/apk/release/app-release.apk ibadah-tracker.apk
 
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v${{ inputs.version }}" "ibadah-tracker-v${{ inputs.version }}.apk" \
+          gh release create "v${{ inputs.version }}" "ibadah-tracker-v${{ inputs.version }}.apk" ibadah-tracker.apk \
             --target main \
             --title "Ibadah Tracker v${{ inputs.version }}" \
-            --notes "Android app (phone and tablet). Download the .apk on your phone and open it to install or update."
+            --notes "Android app (phone and tablet). Install guide: https://frawan.github.io/tracker/android.html"

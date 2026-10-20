@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Privacy · Ibadah Tracker</title>
+    <link rel="stylesheet" href="vendor/tailwind.css">
+</head>
+<body class="bg-gray-100 font-sans text-gray-800">
+    <main class="max-w-2xl mx-auto p-4 sm:p-8">
+        <a href="index.html" class="text-sm text-emerald-700 font-semibold hover:underline">← Back to the tracker</a>
+
+        <article class="mt-4 bg-white p-6 sm:p-8 rounded-xl shadow-md space-y-5 text-sm leading-relaxed">
+            <header>
+                <h1 class="text-2xl font-bold text-emerald-700">Privacy</h1>
+                <p class="text-xs text-gray-500 mt-1">Ibadah Tracker (website and Android app) · Last updated 20 October 2026</p>
+            </header>
+
+            <p>Ibadah Tracker is a personal tool for logging your prayers, Quran and Nafal. It keeps as little about you as it can.</p>
+
+            <section class="space-y-2">
+                <h2 class="text-lg font-semibold text-gray-700">Two ways to use it</h2>
+                <p><b>Local mode (not signed in):</b> everything stays on your device, in the browser or the app. Nothing is sent to us or anyone else.</p>
+                <p><b>Cloud sync (signed in):</b> your data is stored in Google Firebase so it can sync between your phone and laptop.</p>
+            </section>
+
+            <section class="space-y-2">
+                <h2 class="text-lg font-semibold text-gray-700">What is stored when you sign in</h2>
+                <ul class="list-disc pl-5 space-y-1">
+                    <li>Your <b>email address</b>, and your password handled by Firebase Authentication. The app never sees or stores your password itself.</li>
+                    <li>Your <b>tracker entries</b>: for each day you log, the five prayers (alone / Jama'at), and whether you did Quran and Nafal.</li>
+                    <li>The <b>monthly percentages</b> you enter under "Update Previous Months Data".</li>
+                </ul>
+            </section>
+
+            <section class="space-y-2">
+                <h2 class="text-lg font-semibold text-gray-700">What is not collected</h2>
+                <p>No analytics, no advertising, no location, no contacts, no tracking across apps or websites. Your data is not sold or shared.</p>
+            </section>
+
+            <section class="space-y-2">
+                <h2 class="text-lg font-semibold text-gray-700">Who can see your data</h2>
+                <p>Only you, when signed in. The database rules only allow each account to read and write its own record. The data is held by Google Firebase (Google Cloud) as the service provider; see <a class="text-emerald-700 underline" href="https://firebase.google.com/support/privacy" target="_blank" rel="noopener">Firebase privacy and security</a>.</p>
+            </section>
+
+            <section class="space-y-2">
+                <h2 class="text-lg font-semibold text-gray-700">Deleting your data</h2>
+                <ul class="list-disc pl-5 space-y-1">
+                    <li><b>Account and all cloud data:</b> sign in and press <b>Delete my account</b>, or use the <a class="text-emerald-700 underline" href="delete-account.html">Delete account page</a>, which works without the app. Deletion is immediate and permanent.</li>
+                    <li><b>Local-mode data:</b> use <b>Wipe Data &amp; Reset Timeline</b>, clear the site data in your browser, or uninstall the app.</li>
+                    <li>Backup files you download are yours; delete them like any other file.</li>
+                </ul>
+            </section>
+
+            <section class="space-y-2">
+                <h2 class="text-lg font-semibold text-gray-700">Contact</h2>
+                <p>Questions or requests: open an issue at <a class="text-emerald-700 underline" href="https://github.com/frawan/tracker/issues" target="_blank" rel="noopener">github.com/frawan/tracker/issues</a>. Please don't post your password or other private details there.</p>
+            </section>
+        </article>
+    </main>
+</body>
+</html>

@@ -44,9 +44,26 @@
                         <span id="user-display-email" class="text-sm font-semibold text-gray-700">user@gmail.com</span>
                     </div>
                 </div>
-                <button id="btn-logout" class="px-4 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-medium text-sm rounded shadow transition cursor-pointer">
-                    Sign Out & Use Local Offline Mode
-                </button>
+                <div class="flex flex-wrap gap-2">
+                    <button id="btn-logout" class="px-4 py-1.5 pointer-coarse:py-3 bg-rose-600 hover:bg-rose-700 text-white font-medium text-sm rounded shadow transition cursor-pointer">
+                        Sign Out & Use Local Offline Mode
+                    </button>
+                    <button id="btn-delete-account" type="button" class="px-3 py-1.5 pointer-coarse:py-3 bg-white hover:bg-rose-50 text-rose-700 border border-rose-300 font-medium text-xs rounded transition cursor-pointer">
+                        Delete my account
+                    </button>
+                </div>
+            </div>
+
+            <!-- Delete account confirmation (shown when "Delete my account" is pressed) -->
+            <div id="delete-panel" class="hidden mt-4 p-4 rounded-lg border border-rose-300 bg-rose-50 space-y-3">
+                <h4 class="font-bold text-rose-800">Delete your account permanently?</h4>
+                <p class="text-xs text-rose-800">This deletes your sign-in and <b>all your tracker data in the cloud</b> (every day you logged, Quran &amp; Nafal, monthly percentages), and clears the copy on this device. It cannot be undone. <button type="button" onclick="exportDataBackup()" class="underline font-semibold cursor-pointer">Download a backup first</button> if you may want your data later.</p>
+                <form id="delete-form" class="flex flex-col sm:flex-row gap-2">
+                    <input type="password" id="delete-password" placeholder="Enter your password to confirm" autocomplete="current-password" class="border border-rose-300 rounded px-3 py-1.5 pointer-coarse:py-3 text-sm bg-white focus:outline-rose-500 sm:w-72" required>
+                    <button type="submit" id="btn-delete-confirm" class="px-4 py-1.5 pointer-coarse:py-3 bg-rose-700 hover:bg-rose-800 text-white font-semibold text-sm rounded shadow transition cursor-pointer">Delete permanently</button>
+                    <button type="button" id="btn-delete-cancel" class="px-4 py-1.5 pointer-coarse:py-3 bg-white hover:bg-gray-100 text-gray-700 border text-sm rounded transition cursor-pointer">Cancel</button>
+                </form>
+                <p id="delete-message" class="text-xs font-semibold text-rose-800"></p>
             </div>
         </div>
 
@@ -248,8 +265,15 @@
 
         <!-- FOOTER: version + last sync, to confirm which build is loaded -->
         <footer class="mt-10 pt-4 border-t border-gray-200 text-center text-xs text-gray-400 space-y-1">
-            <div>Ibadah Tracker · <span class="font-mono font-semibold text-gray-500">v2.1</span> · updated 20-Oct-2026</div>
+            <div>Ibadah Tracker · <span class="font-mono font-semibold text-gray-500">v2.2</span> · updated 20-Oct-2026</div>
             <div id="footer-sync">Local mode · not signed in</div>
+            <div class="flex flex-wrap justify-center gap-x-3 gap-y-1 pt-1">
+                <a href="privacy.html" class="underline hover:text-gray-600">Privacy</a>
+                <span>·</span>
+                <a href="delete-account.html" class="underline hover:text-gray-600">Delete account</a>
+                <span id="footer-android-sep">·</span>
+                <a id="footer-android" href="android.html" class="underline hover:text-gray-600">📱 Get the Android app</a>
+            </div>
         </footer>
     </div>
 
@@ -263,6 +287,9 @@
             signInWithEmailAndPassword,
             signOut,
             onAuthStateChanged,
+            deleteUser,
+            reauthenticateWithCredential,
+            EmailAuthProvider,
             initializeFirestore,
             persistentLocalCache,
             persistentMultipleTabManager,
@@ -271,6 +298,7 @@
             getDocFromServer,
             setDoc,
             updateDoc,
+            deleteDoc,
             onSnapshot,
             FieldPath
         } = window.FirebaseSDK;
@@ -438,6 +466,63 @@
             }
         });
 
+        // ---- Delete account (Phase 2, P1) ----
+        const deletePanel = document.getElementById("delete-panel");
+        const deleteMsg = document.getElementById("delete-message");
+        document.getElementById("btn-delete-account").addEventListener("click", () => {
+            deleteMsg.innerText = "";
+            deletePanel.classList.remove("hidden");
+            document.getElementById("delete-password").focus();
+        });
+        document.getElementById("btn-delete-cancel").addEventListener("click", () => {
+            document.getElementById("delete-password").value = "";
+            deletePanel.classList.add("hidden");
+        });
+        document.getElementById("delete-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const user = auth.currentUser;
+            if (!user) return;
+            const btn = document.getElementById("btn-delete-confirm");
+            const pass = document.getElementById("delete-password").value;
+            if (!navigator.onLine) { deleteMsg.innerText = "You're offline. Connect to the internet and try again."; return; }
+            btn.disabled = true; btn.innerText = "Deleting…";
+            try {
+                await deleteAccountAndData(user, pass);
+                document.getElementById("delete-password").value = "";
+                deletePanel.classList.add("hidden");
+                alert("Your account and all its cloud data have been deleted.");
+            } catch (err) {
+                deleteMsg.innerText = deleteErrorText(err);
+                // Data deleted but sign-in not: keep listening off; user can retry with the same password
+            } finally {
+                btn.disabled = false; btn.innerText = "Delete permanently";
+            }
+        });
+
+        // Order: check password → delete cloud data → delete sign-in → clear this device.
+        // Data goes first so no cloud data is ever left behind without an account to reach it.
+        async function deleteAccountAndData(user, password) {
+            await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, password));
+            if (unsubscribeDbListener) { unsubscribeDbListener(); unsubscribeDbListener = null; }
+            const userRef = doc(db, "users", user.uid);
+            // Firestore queues writes while offline; require the server to confirm within 20 s
+            await Promise.race([
+                deleteDoc(userRef),
+                new Promise((_, reject) => setTimeout(() => reject({ code: "deadline" }), 20000))
+            ]);
+            // Clear this device before signing out, so local mode starts empty
+            localStorage.removeItem('ibadahAppData');
+            await deleteUser(user);
+        }
+
+        function deleteErrorText(err) {
+            const code = (err && err.code) || "";
+            if (code.includes("wrong-password") || code.includes("invalid-credential") || code.includes("invalid-login")) return "Wrong password. Nothing was deleted.";
+            if (code.includes("too-many-requests")) return "Too many attempts. Wait a few minutes and try again. Nothing was deleted.";
+            if (code.includes("network") || code === "deadline" || code === "unavailable") return "Couldn't reach the server. Check your connection and try again.";
+            return "Couldn't delete the account: " + ((err && err.message) || code || "unknown error");
+        }
+
         // Full overwrite: only for Reset and Restore-from-Backup
         window.syncDataToBackend = async function() {
             if (!window.currentUser) return;
@@ -574,6 +659,8 @@
             // Android's file picker greys out backups shared via WhatsApp/Drive when filtered by ".json";
             // allow any file there; the restore code already rejects files that aren't backups.
             if (isNativeApp) document.getElementById("import-file-input").removeAttribute("accept");
+            // Already in the app: no need to offer the download
+            if (isNativeApp) ["footer-android", "footer-android-sep"].forEach(id => document.getElementById(id).remove());
 
             setupEventListeners();
             initializeSystemFramework();

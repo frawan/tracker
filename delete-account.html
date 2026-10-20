@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Delete account · Ibadah Tracker</title>
+    <link rel="stylesheet" href="vendor/tailwind.css">
+    <script src="vendor/firebase.js"></script>
+</head>
+<body class="bg-gray-100 font-sans text-gray-800">
+    <main class="max-w-xl mx-auto p-4 sm:p-8">
+        <a href="index.html" class="text-sm text-emerald-700 font-semibold hover:underline">← Back to the tracker</a>
+
+        <section class="mt-4 bg-white p-6 sm:p-8 rounded-xl shadow-md space-y-4 text-sm leading-relaxed border-t-4 border-rose-600">
+            <h1 class="text-2xl font-bold text-rose-700">Delete your Ibadah Tracker account</h1>
+            <p>This permanently deletes:</p>
+            <ul class="list-disc pl-5 space-y-1">
+                <li>your sign-in (email and password), and</li>
+                <li>all your tracker data in the cloud: every day you logged, Quran &amp; Nafal, and your monthly percentages.</li>
+            </ul>
+            <p>It cannot be undone. If you may want your data later, sign in to the <a href="index.html" class="text-emerald-700 underline">tracker</a> and use <b>Download Backup File</b> first.</p>
+            <p class="text-xs text-gray-500">Data in local mode (not signed in) is only on your device and is not affected; remove it with <b>Wipe Data</b> or by uninstalling the app. See the <a href="privacy.html" class="underline">privacy page</a>.</p>
+
+            <form id="del-form" class="space-y-3 pt-2">
+                <input type="email" id="del-email" placeholder="Email" autocomplete="username" class="w-full border rounded px-3 py-2 pointer-coarse:py-3 bg-white focus:outline-rose-500" required>
+                <input type="password" id="del-password" placeholder="Password" autocomplete="current-password" class="w-full border rounded px-3 py-2 pointer-coarse:py-3 bg-white focus:outline-rose-500" required>
+                <label class="flex items-start gap-2 text-sm">
+                    <input type="checkbox" id="del-confirm" class="mt-1 w-5 h-5 accent-rose-600" required>
+                    <span>I understand my account and all its data will be deleted permanently.</span>
+                </label>
+                <button type="submit" id="del-btn" class="w-full px-4 py-2 pointer-coarse:py-3 bg-rose-700 hover:bg-rose-800 text-white font-semibold rounded-lg shadow transition cursor-pointer">Delete my account</button>
+            </form>
+            <p id="del-msg" class="text-sm font-semibold"></p>
+        </section>
+    </main>
+
+    <script>
+        const {
+            initializeApp, getAuth, signInWithEmailAndPassword, signOut, deleteUser,
+            initializeFirestore, doc, deleteDoc
+        } = window.FirebaseSDK;
+
+        // Same Firebase project as the tracker (public config; access is protected by Firestore rules)
+        const app = initializeApp({
+            apiKey: "AIzaSyDy_wCamaPUyg3YM9pVGzE7zlogySTASwI",
+            authDomain: "ibadah-tracker-5fa66.firebaseapp.com",
+            projectId: "ibadah-tracker-5fa66",
+            storageBucket: "ibadah-tracker-5fa66.firebasestorage.app",
+            messagingSenderId: "218578693694",
+            appId: "1:218578693694:web:da99913874e66f7c54ab6f"
+        }, "delete-page");
+        const auth = getAuth(app);
+        const db = initializeFirestore(app, {}); // no offline cache: the deletion must reach the server
+
+        const msg = document.getElementById("del-msg");
+        const btn = document.getElementById("del-btn");
+        const show = (text, ok) => { msg.innerText = text; msg.className = "text-sm font-semibold " + (ok ? "text-emerald-700" : "text-rose-700"); };
+
+        document.getElementById("del-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            if (!navigator.onLine) return show("You're offline. Connect to the internet and try again.");
+            const email = document.getElementById("del-email").value.trim();
+            const pass = document.getElementById("del-password").value;
+            btn.disabled = true; btn.innerText = "Deleting…";
+            try {
+                const { user } = await signInWithEmailAndPassword(auth, email, pass);
+                // Data first, then the sign-in, so no data is left without an account
+                await deleteDoc(doc(db, "users", user.uid));
+                await deleteUser(user);
+                // Clear any copy this browser kept from the tracker
+                try { localStorage.removeItem('ibadahAppData'); } catch (_) {}
+                document.getElementById("del-form").reset();
+                show("✓ Your account and all its cloud data have been deleted.", true);
+            } catch (err) {
+                const code = (err && err.code) || "";
+                if (code.includes("invalid-credential") || code.includes("wrong-password") || code.includes("user-not-found") || code.includes("invalid-login")) show("Email or password is wrong. Nothing was deleted.");
+                else if (code.includes("too-many-requests")) show("Too many attempts. Wait a few minutes and try again.");
+                else if (code.includes("network")) show("Couldn't reach the server. Check your connection and try again.");
+                else show("Couldn't delete the account: " + ((err && err.message) || code));
+                try { await signOut(auth); } catch (_) {}
+            } finally {
+                btn.disabled = false; btn.innerText = "Delete my account";
+            }
+        });
+    </script>
+</body>
+</html>

@@ -6,7 +6,10 @@ export {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  deleteUser,
+  reauthenticateWithCredential,
+  EmailAuthProvider
 } from "firebase/auth";
 export {
   initializeFirestore,
@@ -17,6 +20,7 @@ export {
   getDocFromServer,
   setDoc,
   updateDoc,
+  deleteDoc,
   onSnapshot,
   FieldPath
 } from "firebase/firestore";
