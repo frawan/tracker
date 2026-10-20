@@ -8,7 +8,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // CI passes these (-PappVersionCode / -PappVersionName); local builds use the defaults
-        versionCode (project.findProperty('appVersionCode') ?: '1') as int
+        versionCode (project.findProperty('appVersionCode') ?: '1').toString().toInteger()
         versionName project.findProperty('appVersionName') ?: '2.1.0'
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
