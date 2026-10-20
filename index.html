@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ibadah & Namaz Tracker</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <!-- Libraries are bundled in vendor/ (pinned versions, see vendor/VERSIONS.md) so the app works offline -->
+    <link rel="stylesheet" href="vendor/tailwind.css">
+    <script src="vendor/chart.umd.min.js"></script>
+    <script src="vendor/chartjs-plugin-datalabels.min.js"></script>
+    <script src="vendor/firebase.js"></script>
 </head>
 <body class="bg-gray-100 font-sans text-gray-800">
 
@@ -89,9 +91,9 @@
                     </div>
 
                     <div class="mb-4 p-3 bg-gray-50 rounded-lg text-xs text-gray-500 flex justify-around border">
-                        <span class="flex items-center gap-1"><span class="w-3 h-3 bg-white border rounded inline-block"></span> Click 1: Unprayed</span>
-                        <span class="flex items-center gap-1"><span class="w-3 h-3 bg-sky-400 rounded inline-block"></span> Click 2: Alone (y)</span>
-                        <span class="flex items-center gap-1"><span class="w-3 h-3 bg-emerald-500 rounded inline-block"></span> Click 3: Jama'at (Y)</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 bg-white border rounded inline-block"></span> Tap 1: Unprayed</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 bg-sky-400 rounded inline-block"></span> Tap 2: Alone (y)</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-3 bg-emerald-500 rounded inline-block"></span> Tap 3: Jama'at (Y)</span>
                     </div>
 
                     <h3 class="font-medium text-sm text-gray-500 uppercase tracking-wider mb-2">Obligatory Namaz</h3>
@@ -188,7 +190,7 @@
                         </h2>
                         <span id="incomplete-badge" class="text-xs font-bold px-2 py-0.5 rounded bg-rose-100 text-rose-700">0 days</span>
                     </div>
-                    <p class="text-xs text-gray-500">Days with fewer than 5 prayers logged. Click any date to view and complete it.</p>
+                    <p class="text-xs text-gray-500">Days with fewer than 5 prayers logged. Tap any date to view and complete it.</p>
                     
                     <div id="incomplete-days-container" class="space-y-2 max-h-56 overflow-y-auto pr-1">
                         <!-- Populated dynamically -->
@@ -230,26 +232,25 @@
 
     <!-- FIREBASE SERVICES MODULE SCRIPT -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { 
-            getAuth, 
-            createUserWithEmailAndPassword, 
-            signInWithEmailAndPassword, 
-            signOut, 
-            onAuthStateChanged 
-        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { 
+        // Firebase 10.8.0 is loaded from vendor/firebase.js (window.FirebaseSDK)
+        const {
+            initializeApp,
+            getAuth,
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            signOut,
+            onAuthStateChanged,
             initializeFirestore,
             persistentLocalCache,
             persistentMultipleTabManager,
-            doc, 
+            doc,
             getDoc,
             getDocFromServer,
-            setDoc, 
+            setDoc,
             updateDoc,
             onSnapshot,
             FieldPath
-        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        } = window.FirebaseSDK;
 
         const firebaseConfig = {
             apiKey: "AIzaSyDy_wCamaPUyg3YM9pVGzE7zlogySTASwI",

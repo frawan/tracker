@@ -1,0 +1,4 @@
+/* Compiled to vendor/tailwind.css by `npm run build:css`.
+   Only index.html is scanned, so every Tailwind class must appear there written out in full. */
+@import "tailwindcss" source(none);
+@source "../index.html";
