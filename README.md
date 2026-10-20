@@ -42,13 +42,15 @@ This project is optimized as a single-file portable utility that requires no com
 
 
 
-\* \*\*Frontend Framework:\*\* Tailwind CSS v4 (via CDN)
+\* \*\*Frontend Framework:\*\* Tailwind CSS v4 (compiled to `vendor/tailwind.css`)
 
-\* \*\*Data Visualization:\*\* Chart.js \& ChartJS Plugin Datalabels (via CDN)
+\* \*\*Data Visualization:\*\* Chart.js \& ChartJS Plugin Datalabels (bundled in `vendor/`)
 
 \* \*\*Storage Engine:\*\* Firebase Firestore (with offline cache) when logged in; browser `localStorage` otherwise
 
 \* \*\*Auth:\*\* Firebase Authentication (email/password)
+
+\* \*\*Offline:\*\* All libraries are stored in `vendor/` with pinned versions (see `vendor/VERSIONS.md`), so the app loads without internet. Only Firebase sync needs a connection.
 
 
 
@@ -92,3 +94,18 @@ service cloud.firestore {
   }
 }
 ```
+
+---
+
+## 🧑‍💻 For developers
+
+The app still needs no build to run: open `index.html` directly or from GitHub Pages. A build is only needed to refresh `vendor/`:
+
+```
+npm ci
+npm run build
+```
+
+Run `npm run build:css` and commit `vendor/tailwind.css` whenever you add a new Tailwind class to `index.html`.
+
+Android app plans: `docs/android/PHASE1_REQUIREMENTS.md`.

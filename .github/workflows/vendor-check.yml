@@ -1,0 +1,22 @@
+name: Vendor check
+
+# Fails if the committed files in vendor/ don't match a fresh build
+# (e.g. a new Tailwind class was added to index.html without re-running npm run build:css).
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: vendor/ is up to date
+        run: git diff --exit-code -- vendor/

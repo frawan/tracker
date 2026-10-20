@@ -1,0 +1,20 @@
+{
+  "name": "ibadah-tracker",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Ibadah & Namaz Tracker - web app and Android wrapper",
+  "scripts": {
+    "build:css": "tailwindcss -i src/tailwind.css -o vendor/tailwind.css --minify",
+    "build:firebase": "esbuild src/firebase-entry.js --bundle --format=iife --global-name=FirebaseSDK --minify --legal-comments=eof --outfile=vendor/firebase.js",
+    "build:chart": "node scripts/copy-vendor.mjs",
+    "build": "npm run build:css && npm run build:firebase && npm run build:chart"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.3.3",
+    "chart.js": "4.5.1",
+    "chartjs-plugin-datalabels": "2.2.0",
+    "esbuild": "0.28.2",
+    "firebase": "10.8.0",
+    "tailwindcss": "4.3.3"
+  }
+}
