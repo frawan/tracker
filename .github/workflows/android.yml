@@ -36,7 +36,15 @@ jobs:
 
       - name: Build test APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon -PappVersionCode=${{ github.run_number }}
+        run: |
+          set -o pipefail
+          ./gradlew assembleDebug --no-daemon -PappVersionCode=${{ github.run_number }} 2>&1 | tee gradle.log || {
+            # Show the reason on the pull request page (build log downloads aren't always reachable)
+            grep -E "error:|ERROR|What went wrong|> " gradle.log | grep -vE "^> Task" | head -15 | while IFS= read -r line; do
+              echo "::error title=Android build::${line}"
+            done
+            exit 1
+          }
 
       - name: Name the APK
         run: |
