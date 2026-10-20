@@ -130,8 +130,8 @@ All four decided by the CEO on 20-Oct-2026.
 | PR | Content | Gate |
 |----|---------|------|
 | 1 | R1 offline libraries + R5.7 wording (web-only change) | §8.1 |
-| 2 | R2, R3, R4 Capacitor wrapper + backup on Android | §8.1 + §8.2 items 1–7 |
+| 2 | R2, R3, R4 Capacitor wrapper + backup on Android, plus R7.1 test-APK build (moved forward so the app can be tested on a phone) | §8.1 + §8.2 items 1–7 |
 | 3 | R5 tablet/phone layout | §8.1 + §8.2 item 8 |
-| 4 | R6 icon/splash + R7 CI and signing | §8.2 items 1, 9 |
+| 4 | R6 icon/splash + R7.2–R7.5 signed release build | §8.2 items 1, 9 |
 
 Each PR is approved and merged by the CEO; Quantum posts the test results in the PR before asking.

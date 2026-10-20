@@ -108,4 +108,10 @@ npm run build
 
 Run `npm run build:css` and commit `vendor/tailwind.css` whenever you add a new Tailwind class to `index.html`.
 
-Android app plans: `docs/android/PHASE1_REQUIREMENTS.md`.
+### Android app
+
+The Android app wraps the same `index.html` with Capacitor (app ID `com.frawan.ibadahtracker`).
+
+\* Every push to an `android/...` branch and every pull request builds a test APK on GitHub Actions (\*Android build\* workflow → \*Artifacts\*). It installs as \*\*Ibadah Tracker (test)\*\*, next to the real app.
+\* To build locally (needs Android Studio / JDK 21): `npm ci && npm run build && npm run android:sync`, then open the `android/` folder in Android Studio.
+\* Requirements and plan: `docs/android/PHASE1_REQUIREMENTS.md`.

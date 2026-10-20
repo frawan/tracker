@@ -1,0 +1,12 @@
+{
+  "appId": "com.frawan.ibadahtracker",
+  "appName": "Ibadah Tracker",
+  "webDir": "www",
+  "backgroundColor": "#f3f4f6",
+  "plugins": {
+    "SystemBars": {
+      "style": "LIGHT",
+      "insetsHandling": "css"
+    }
+  }
+}

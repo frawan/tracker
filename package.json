@@ -7,14 +7,24 @@
     "build:css": "tailwindcss -i src/tailwind.css -o vendor/tailwind.css --minify",
     "build:firebase": "esbuild src/firebase-entry.js --bundle --format=iife --global-name=FirebaseSDK --minify --legal-comments=eof --outfile=vendor/firebase.js",
     "build:chart": "node scripts/copy-vendor.mjs",
-    "build": "npm run build:css && npm run build:firebase && npm run build:chart"
+    "build": "npm run build:css && npm run build:firebase && npm run build:native && npm run build:chart",
+    "build:native": "esbuild src/native-entry.js --bundle --format=iife --global-name=NativeSDK --minify --legal-comments=eof --outfile=vendor/native.js",
+    "android:sync": "node scripts/copy-web.mjs && cap sync android"
   },
   "devDependencies": {
+    "@capacitor/cli": "8.5.3",
     "@tailwindcss/cli": "4.3.3",
     "chart.js": "4.5.1",
     "chartjs-plugin-datalabels": "2.2.0",
     "esbuild": "0.28.2",
     "firebase": "10.8.0",
     "tailwindcss": "4.3.3"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/filesystem": "8.1.5",
+    "@capacitor/share": "8.0.3"
   }
 }
