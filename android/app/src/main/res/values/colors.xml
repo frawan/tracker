@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Emerald, matches the web app header (#047857) -->
+    <color name="splash_background">#047857</color>
+</resources>
