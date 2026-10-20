@@ -83,6 +83,17 @@ Ship the existing web app (`index.html`, v2.0) as an installable Android app for
 - R7.4 Building never deploys anything and never merges anything (CEO decides releases).
 - R7.5 Build time target: under 10 minutes; Gradle and npm caches enabled.
 
+### R8 — CEO requests after testing the first APK (20-Oct-2026)
+Apply to the website and the app.
+- R8.1 **Update Previous Months Data** and **Overview Table** start collapsed on every load; tapping the header opens them, as today.
+- R8.2 **Data Backup Management** and **Workspace Management & Sharing** become one card: Download Backup and Restore first, then Wipe Data & Reset Timeline set apart below as the dangerous action (it still asks for confirmation).
+- R8.3 New **Quran & Nafal** card below Incomplete Days:
+  - Follows the month of the selected date, like Incomplete Days.
+  - Bar chart with two bars per day (Quran, Nafal): a full bar on days it was done, nothing on days it wasn't.
+  - Totals at the top: "Quran N days · Nafal N days" out of the days counted (days so far for the current month, all days for past months).
+  - Tapping a day opens that date in Daily Entry, like Incomplete Days.
+  - Readable at phone width (360 px) without sideways scrolling.
+
 ## 5. Non-functional
 
 - N1 App starts and shows today's entry in under 3 seconds on a mid-range phone, online or offline.
@@ -131,7 +142,7 @@ All four decided by the CEO on 20-Oct-2026.
 |----|---------|------|
 | 1 | R1 offline libraries + R5.7 wording (web-only change) | §8.1 |
 | 2 | R2, R3, R4 Capacitor wrapper + backup on Android, plus R7.1 test-APK build (moved forward so the app can be tested on a phone) | §8.1 + §8.2 items 1–7 |
-| 3 | R5 tablet/phone layout | §8.1 + §8.2 item 8 |
+| 3 | R5 tablet/phone layout + R8 CEO requests | §8.1 (desktop compare limited to unchanged areas) + §8.2 item 8 |
 | 4 | R6 icon/splash + R7.2–R7.5 signed release build | §8.2 items 1, 9 |
 
 Each PR is approved and merged by the CEO; Quantum posts the test results in the PR before asking.
