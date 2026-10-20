@@ -9,7 +9,7 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // CI passes these (-PappVersionCode / -PappVersionName); local builds use the defaults
         versionCode = Integer.parseInt((project.findProperty('appVersionCode') ?: '1').toString())
-        versionName = (project.findProperty('appVersionName') ?: '2.1.0').toString()
+        versionName = (project.findProperty('appVersionName') ?: '2.2.0').toString()
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {

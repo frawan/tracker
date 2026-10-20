@@ -1,4 +1,7 @@
 /* Compiled to vendor/tailwind.css by `npm run build:css`.
-   Only index.html is scanned, so every Tailwind class must appear there written out in full. */
+   Only the pages below are scanned, so every Tailwind class must appear in them written out in full. */
 @import "tailwindcss" source(none);
 @source "../index.html";
+@source "../privacy.html";
+@source "../delete-account.html";
+@source "../android.html";
