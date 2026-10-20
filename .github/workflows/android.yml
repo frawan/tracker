@@ -1,0 +1,51 @@
+name: Android build
+
+# Builds a test APK ("Ibadah Tracker (test)") for every Android branch and pull request.
+# Download it from the run's Artifacts section. Building never merges or releases anything.
+on:
+  push:
+    branches: ['android/**']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  debug-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install and bundle web app
+        run: |
+          npm ci
+          npm run build
+          npm run android:sync
+
+      - name: Build test APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Name the APK
+        run: |
+          short=$(echo "$GITHUB_SHA" | cut -c1-7)
+          cp android/app/build/outputs/apk/debug/app-debug.apk "ibadah-tracker-test-${short}.apk"
+          echo "APK_NAME=ibadah-tracker-test-${short}" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APK_NAME }}
+          path: ${{ env.APK_NAME }}.apk
+          retention-days: 30

@@ -9,6 +9,7 @@
     <script src="vendor/chart.umd.min.js"></script>
     <script src="vendor/chartjs-plugin-datalabels.min.js"></script>
     <script src="vendor/firebase.js"></script>
+    <script src="vendor/native.js"></script>
 </head>
 <body class="bg-gray-100 font-sans text-gray-800">
 
@@ -372,6 +373,10 @@
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === "visible") refreshFromServer();
         });
+        // Android app: also refresh when the app returns to the foreground
+        if (window.NativeSDK && window.NativeSDK.Capacitor.isNativePlatform()) {
+            window.NativeSDK.App.addListener("resume", refreshFromServer);
+        }
         window.addEventListener("online", refreshFromServer);
 
         document.getElementById("btn-signup").addEventListener("click", async () => {
@@ -544,6 +549,10 @@
             const today = localDateStr();
             dateInput.value = today;
 
+            // Android's file picker greys out backups shared via WhatsApp/Drive when filtered by ".json";
+            // allow any file there; the restore code already rejects files that aren't backups.
+            if (isNativeApp) document.getElementById("import-file-input").removeAttribute("accept");
+
             setupEventListeners();
             initializeSystemFramework();
             buildManualMonthInputs();
@@ -704,7 +713,28 @@
             }
         }
 
-        function exportDataBackup() {
+        // True only inside the Android app (Capacitor); false on the website.
+        const isNativeApp = !!(window.NativeSDK && window.NativeSDK.Capacitor.isNativePlatform());
+
+        async function exportDataBackup() {
+            if (isNativeApp) {
+                // Android WebView ignores <a download>: write the file, then open the share sheet
+                // so it can be saved to Files/Drive or sent on WhatsApp.
+                const { Filesystem, Directory, Encoding, Share } = window.NativeSDK;
+                try {
+                    const result = await Filesystem.writeFile({
+                        path: "ibadah_tracker_backup.json",
+                        data: JSON.stringify(window.appData, null, 2),
+                        directory: Directory.Cache,
+                        encoding: Encoding.UTF8
+                    });
+                    await Share.share({ title: "Ibadah Tracker backup", files: [result.uri] });
+                } catch (err) {
+                    // Closing the share sheet without choosing an app is not an error
+                    if (!/cancel/i.test(String(err && err.message))) alert("Backup Error: " + (err && err.message ? err.message : err));
+                }
+                return;
+            }
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(window.appData, null, 2));
             const downloadAnchor = document.createElement('a');
             downloadAnchor.setAttribute("href", dataStr);
