@@ -207,10 +207,17 @@
                         <span id="qn-quran-total" class="px-2 py-1 rounded bg-violet-50 text-violet-800 border border-violet-200">Quran 0 days</span>
                         <span id="qn-nafal-total" class="px-2 py-1 rounded bg-amber-50 text-amber-800 border border-amber-200">Nafal 0 days</span>
                     </div>
-                    <div class="relative w-full h-48 md:max-lg:h-56">
-                        <canvas id="quranNafalChart"></canvas>
+                    <div>
+                        <div class="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold text-gray-400 mb-1">
+                            <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+                        </div>
+                        <div id="qn-calendar" class="grid grid-cols-7 gap-1"></div>
                     </div>
-                    <p class="text-xs text-gray-500">One bar for each day it was done. Tap a day to open it.</p>
+                    <div class="flex flex-wrap justify-center gap-x-4 gap-y-1 text-[11px] text-gray-500">
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-violet-500 inline-block"></span> Quran</span>
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> Nafal</span>
+                        <span>faded = not done · tap a day to open it</span>
+                    </div>
                 </div>
 
                 <!-- Overview Table -->
@@ -483,7 +490,6 @@
         let monthsOrder = [];
         window.appData = null;
         let chartInstance = null;
-        let quranNafalChart = null;
 
         // Automatically rolls the 12-month window to end at the selected calendar date
         function calculateTimelineOrder(referenceDate = null) {
@@ -1034,17 +1040,20 @@
             renderQuranNafal();
         }
 
-        // Quran & Nafal: two bars per day for the month of the selected date
+        // Quran & Nafal: month calendar with a Quran dot and a Nafal dot on each day
         function renderQuranNafal() {
-            const canvas = document.getElementById("quranNafalChart");
-            if (!canvas) return;
+            const grid = document.getElementById("qn-calendar");
+            if (!grid) return;
 
             const dateInputVal = document.getElementById("tracker-date").value;
-            const activeDate = dateInputVal ? parseLocalDate(dateInputVal) : new Date();
+            const selected = dateInputVal || localDateStr();
+            const activeDate = parseLocalDate(selected);
             const year = activeDate.getFullYear();
             const monthIdx = activeDate.getMonth();
             const monthPadded = String(monthIdx + 1).padStart(2, '0');
             const daysInMonth = new Date(year, monthIdx + 1, 0).getDate();
+            const firstWeekday = new Date(year, monthIdx, 1).getDay(); // 0 = Sunday
+            const todayStr = localDateStr();
 
             // Days counted: all days for past months, days so far for the current month, none for future months
             const today = new Date();
@@ -1052,62 +1061,33 @@
             if (year === today.getFullYear() && monthIdx === today.getMonth()) daysCounted = today.getDate();
             else if (year > today.getFullYear() || (year === today.getFullYear() && monthIdx > today.getMonth())) daysCounted = 0;
 
-            const labels = [], dateKeys = [], quran = [], nafal = [];
             let quranDays = 0, nafalDays = 0;
+            let cells = '';
+            for (let i = 0; i < firstWeekday; i++) cells += '<div></div>';
             for (let day = 1; day <= daysInMonth; day++) {
-                const dayPadded = String(day).padStart(2, '0');
-                const key = `${year}-${monthPadded}-${dayPadded}`;
+                const key = `${year}-${monthPadded}-${String(day).padStart(2, '0')}`;
                 const log = (window.appData && window.appData.dailyLogs && window.appData.dailyLogs[key]) || {};
-                labels.push(String(day));
-                dateKeys.push(key);
-                quran.push(log.quran ? 1 : 0);
-                nafal.push(log.nafal ? 1 : 0);
                 if (log.quran) quranDays++;
                 if (log.nafal) nafalDays++;
+                const isFuture = key > todayStr;
+                const isSelected = key === selected;
+                const border = isSelected ? 'border-violet-500 ring-1 ring-violet-300' : (key === todayStr ? 'border-emerald-400' : 'border-gray-200');
+                cells += `
+                    <button type="button" onclick="jumpToDate('${key}')" title="${day} ${monthMap[monthIdx]}: Quran ${log.quran ? '✓' : '✗'}, Nafal ${log.nafal ? '✓' : '✗'}"
+                        class="border ${border} rounded-lg py-1 pointer-coarse:py-1.5 flex flex-col items-center gap-1 bg-white hover:bg-violet-50 transition cursor-pointer ${isFuture ? 'opacity-40' : ''}">
+                        <span class="text-[11px] font-semibold text-gray-700 leading-none">${day}</span>
+                        <span class="flex gap-1">
+                            <span class="w-2.5 h-2.5 rounded-full ${log.quran ? 'bg-violet-500' : 'bg-violet-100'}"></span>
+                            <span class="w-2.5 h-2.5 rounded-full ${log.nafal ? 'bg-amber-500' : 'bg-amber-100'}"></span>
+                        </span>
+                    </button>`;
             }
+            grid.innerHTML = cells;
 
             document.getElementById("qn-month-label").innerText = `${monthMap[monthIdx]} ${year}`;
             const of = daysCounted > 0 ? ` / ${daysCounted}` : '';
             document.getElementById("qn-quran-total").innerText = `📖 Quran ${quranDays}${of} days`;
             document.getElementById("qn-nafal-total").innerText = `🤲 Nafal ${nafalDays}${of} days`;
-
-            if (quranNafalChart) quranNafalChart.destroy();
-            quranNafalChart = new Chart(canvas.getContext('2d'), {
-                type: 'bar',
-                data: {
-                    labels,
-                    datasets: [
-                        { label: 'Quran', data: quran, backgroundColor: 'rgba(139, 92, 246, 0.85)', borderRadius: 2, categoryPercentage: 0.85, barPercentage: 0.9 },
-                        { label: 'Nafal', data: nafal, backgroundColor: 'rgba(245, 158, 11, 0.85)', borderRadius: 2, categoryPercentage: 0.85, barPercentage: 0.9 }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: false,
-                    scales: {
-                        y: { display: false, min: 0, max: 1 },
-                        x: {
-                            grid: { display: false },
-                            ticks: { autoSkip: true, maxRotation: 0, font: { size: 10 } }
-                        }
-                    },
-                    plugins: {
-                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
-                        tooltip: {
-                            callbacks: {
-                                title: items => `${items[0].label} ${monthMap[monthIdx]} ${year}`,
-                                label: item => `${item.dataset.label}: ${item.raw ? 'done ✓' : 'not done'}`
-                            }
-                        }
-                    },
-                    // Tap a day to open it in Daily Entry
-                    onClick: (evt, elements, chart) => {
-                        const hit = chart.getElementsAtEventForMode(evt, 'index', { intersect: false }, false);
-                        if (hit.length) jumpToDate(dateKeys[hit[0].index]);
-                    }
-                }
-            });
         }
         window.renderQuranNafal = renderQuranNafal;
         window.calculateAndRenderStats = calculateAndRenderStats;
