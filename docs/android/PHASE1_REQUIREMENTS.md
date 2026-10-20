@@ -1,6 +1,6 @@
 # Ibadah Tracker for Android — Phase 1 Requirements
 
-**Author:** Quantum (QA / Docs) · **Status:** Draft for CEO approval · **Date:** 20-Oct-2026
+**Author:** Quantum (QA / Docs) · **Status:** Decisions settled — awaiting CEO approval · **Date:** 20-Oct-2026
 **Builder:** Dave · **Approver:** Farrukh (CEO) — nothing merges to `main` without explicit approval.
 
 ---
@@ -96,12 +96,14 @@ Play Store listing, iOS, prayer-time reminders / notifications, home-screen widg
 
 ## 7. Open decisions for the CEO
 
-| # | Decision | Quantum's recommendation |
-|---|----------|--------------------------|
+All four decided by the CEO on 20-Oct-2026.
+
+| # | Decision | Outcome |
+|---|----------|---------|
 | D1 | App ID (permanent once installed/published) | `com.frawan.ibadahtracker` |
 | D2 | Name under the icon | `Ibadah Tracker` |
 | D3 | Release signing | Stable keystore in GitHub Secrets (Dave generates it; Farrukh adds the secrets and keeps an offline copy) |
-| D4 | Icon artwork | Dave drafts a simple emerald mosque/crescent mark for approval, unless Farrukh supplies one |
+| D4 | Icon artwork | Dave drafts a simple emerald mosque/crescent mark for CEO approval |
 
 ## 8. Acceptance tests (Quantum runs these on every PR)
 
