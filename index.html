@@ -278,7 +278,7 @@
 
         <!-- FOOTER: version + last sync, to confirm which build is loaded -->
         <footer class="mt-10 pt-4 border-t border-gray-200 text-center text-xs text-gray-400 space-y-1">
-            <div>Ibadah Tracker · <span class="font-mono font-semibold text-gray-500">v2.3</span> · updated 20-Oct-2026</div>
+            <div>Ibadah Tracker · <span class="font-mono font-semibold text-gray-500">v2.4</span> · updated 10-Nov-2026</div>
             <div id="footer-sync">Local mode · not signed in</div>
             <div class="flex flex-wrap justify-center gap-x-3 gap-y-1 pt-1">
                 <a href="privacy.html" class="underline hover:text-gray-600">Privacy</a>
@@ -1011,7 +1011,7 @@
             const daysInMonthMap = { "Jan": 31, "Mar": 31, "Apr": 30, "May": 31, "Jun": 30, "Jul": 31, "Aug": 31, "Sep": 30, "Oct": 31, "Nov": 30, "Dec": 31 };
 
             const liveCalculations = {};
-            monthsOrder.forEach(m => { liveCalculations[m] = { checkedPrayers: 0, hasLiveEntries: false }; });
+            monthsOrder.forEach(m => { liveCalculations[m] = { checkedPrayers: 0, jamaatPrayers: 0, hasLiveEntries: false }; });
 
             Object.keys(window.appData.dailyLogs || {}).forEach(dateStr => {
                 const parts = dateStr.split('-');
@@ -1027,6 +1027,8 @@
                             if (val === 'y' || val === 'Y' || val === true) {
                                 checkedInDay++;
                             }
+                            // Jama'at is 'Y'; 'y' and old true/false entries count as Alone
+                            if (val === 'Y') liveCalculations[shortMonthKey].jamaatPrayers++;
                         });
                         
                         liveCalculations[shortMonthKey].checkedPrayers += checkedInDay;
@@ -1038,6 +1040,7 @@
             });
 
             const percentagesMap = {};
+            const jamaatPctMap = {}; // only for months logged day by day
             monthsOrder.forEach(monthKey => {
                 let percent = (window.appData.monthlyOverrides && window.appData.monthlyOverrides[monthKey] !== undefined) 
                     ? window.appData.monthlyOverrides[monthKey] 
@@ -1054,6 +1057,8 @@
                     if (monthKey === activeSystemMonthStr) daysInMonth = today.getDate();
                     const totalPossiblePrayersInMonth = daysInMonth * 5;
                     percent = Math.round((liveData.checkedPrayers / totalPossiblePrayersInMonth) * 100);
+                    // Jama'at share of the bar; Alone is the rest, so the two always add up to the total shown
+                    jamaatPctMap[monthKey] = Math.min(percent, Math.round((liveData.jamaatPrayers / totalPossiblePrayersInMonth) * 100));
                 }
                 percentagesMap[monthKey] = percent;
             });
@@ -1101,47 +1106,65 @@
                 chartInstance.destroy();
             }
 
-            const backgroundColors = finalPercentages.map(pct => pct === 100 ? 'rgba(16, 185, 129, 0.8)' : 'rgba(56, 189, 248, 0.8)');
-            const borderColors = finalPercentages.map(pct => pct === 100 ? 'rgba(16, 185, 129, 1)' : 'rgba(56, 189, 248, 1)');
+            // Colours: green = 100% month, blue = under 100% (as before).
+            // Months logged day by day are split: darker shade = Jama'at, lighter = Alone.
+            // Months entered as one % under "Update Previous Months Data" have no split and stay one bar.
+            const isSplit = monthsOrder.map(m => jamaatPctMap[m] !== undefined);
+            const pick = (cond, val) => finalPercentages.map((pct, i) => cond(pct, i) ? val(pct, i) : null);
+            const jamaatOf = (pct, i) => jamaatPctMap[monthsOrder[i]];
+            const aloneOf = (pct, i) => pct - jamaatPctMap[monthsOrder[i]];
+            const full = pct => pct === 100;
+
+            const seg = (label, data, color, textColor) => ({
+                label, data, backgroundColor: color, borderColor: color, borderWidth: 0, stack: 'month',
+                datalabels: { color: textColor }
+            });
+            const datasets = [
+                seg("100% · Jama'at", pick((p, i) => isSplit[i] && full(p), jamaatOf), 'rgba(4, 120, 87, 0.9)', '#FFFFFF'),
+                seg("100% · Alone", pick((p, i) => isSplit[i] && full(p), aloneOf), 'rgba(110, 231, 183, 0.95)', '#065F46'),
+                seg("Under 100% · Jama'at", pick((p, i) => isSplit[i] && !full(p), jamaatOf), 'rgba(2, 132, 199, 0.95)', '#FFFFFF'),
+                seg("Under 100% · Alone", pick((p, i) => isSplit[i] && !full(p), aloneOf), 'rgba(147, 214, 250, 0.95)', '#075985'),
+                {
+                    label: "Entered as one %",
+                    data: pick((p, i) => !isSplit[i], p => p),
+                    backgroundColor: finalPercentages.map(pct => full(pct) ? 'rgba(16, 185, 129, 0.8)' : 'rgba(56, 189, 248, 0.8)'),
+                    borderWidth: 0, stack: 'month', datalabels: { color: '#FFFFFF' }
+                }
+            ].filter(ds => ds.data.some(v => v !== null)); // no empty legend entries
 
             chartInstance = new Chart(ctx, {
                 type: 'bar',
-                data: {
-                    labels: monthsOrder,
-                    datasets: [{
-                        label: 'Achieved Completion %',
-                        data: finalPercentages,
-                        backgroundColor: backgroundColors,
-                        borderColor: borderColors,
-                        borderWidth: 1,
-                        borderRadius: 4
-                    }]
-                },
+                data: { labels: monthsOrder, datasets },
                 plugins: [ChartDataLabels],
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
                     scales: {
+                        x: { stacked: true },
                         y: {
+                            stacked: true,
                             beginAtZero: true,
                             max: 100,
                             ticks: { callback: value => value + "%" }
                         }
                     },
                     plugins: {
-                        datalabels: {
-                            anchor: 'end',
-                            align: 'start',
-                            offset: 4,
-                            rotation: -90,
-                            color: '#FFFFFF',
-                            font: {
-                                weight: 'bold',
-                                size: 11
-                            },
-                            formatter: function(value) {
-                                return value > 0 ? value + '%' : '';
+                        legend: { labels: { boxWidth: 12, font: { size: 10 } } },
+                        tooltip: {
+                            filter: item => item.raw !== null,
+                            callbacks: {
+                                label: item => ` ${item.dataset.label.replace(/^(100%|Under 100%) · /, '')}: ${item.raw}%`,
+                                footer: items => items.length ? `Total: ${finalPercentages[items[0].dataIndex]}%` : ''
                             }
+                        },
+                        datalabels: {
+                            anchor: 'center',
+                            align: 'center',
+                            rotation: -90,
+                            font: { weight: 'bold', size: 10 },
+                            // Hide labels on slivers too thin to read
+                            formatter: value => (value !== null && value >= 8) ? value + '%' : ''
                         }
                     }
                 }
